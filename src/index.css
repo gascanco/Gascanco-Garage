@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Oswald", "Barlow Condensed", sans-serif;
+  --font-body: "Oswald", "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-gascanco-grey-base: #303030;
+  --color-gascanco-grey-dark: #202020;
+  --color-gascanco-grey-card: #282828;
+  --color-gascanco-grey-border: #444444;
+  --color-gascanco-red: #C8102E;
+  --color-gascanco-red-hover: #e01334;
+}
+
+/* Enforce sharp corners / zero radius across everything per specification */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+html {
+  font-size: 15px;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (min-width: 640px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 16.5px;
+  }
+}
+
+@media (min-width: 1440px) {
+  html {
+    font-size: 17.5px;
+  }
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: #303030;
+  color: #ffffff;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for horizontal carousels & galleries */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #202020;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444444;
+  border-radius: 0 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
+}
+
+
+
