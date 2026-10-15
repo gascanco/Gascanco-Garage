@@ -150,11 +150,6 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
                       <Calendar className="w-4 h-4" />
                       <span>Member since {currentUser.memberSince}</span>
                     </span>
-                    {isHardAdmin(currentUser) && (
-                      <span className="flex items-center gap-1.5 text-[#ff4d4d] font-bold">
-                        <span>Shopify Admin: Gascanco@gmail.com</span>
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>

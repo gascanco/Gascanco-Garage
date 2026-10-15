@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Vehicle, VehicleCategory, Owner, BuildUpdate, 
-  GarageEvent, CommunityPost 
+  GarageEvent, CommunityPost, isHardAdmin
 } from '../../types/garage';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
 import { 
@@ -9,10 +9,11 @@ import {
   Wrench, Calendar, BookOpen, MessageSquare, Car, MapPin, 
   Clock, Tag, Flame, Plus, ChevronRight, Upload, Loader2, 
   Image as ImageIcon, RefreshCw, RotateCcw, AlertCircle, 
-  Wand2, Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube
+  Wand2, Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube,
+  ShoppingBag, ShieldCheck
 } from 'lucide-react';
 
-export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post';
+export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement';
 
 interface AddVehicleModalProps {
   isOpen: boolean;
@@ -353,6 +354,23 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   const [isPostDragOver, setIsPostDragOver] = useState(false);
   const postFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // ----------------------------------------------------
+  // 5. ADVERTISEMENT / SPONSORED DROP STATE (Super Admin Only)
+  // ----------------------------------------------------
+  const [adTitle, setAdTitle] = useState('GASCANCO Heavyweight Work Hoodie');
+  const [adContent, setAdContent] = useState('Engineered for late nights turning wrenches in cold bays. 450GSM ultra-dense fleece, reinforced elbows, and official GASCANCO badge embroidery.');
+  const [adProductTitle, setAdProductTitle] = useState('Heavyweight Zip Work Hoodie');
+  const [adCollectionName, setAdCollectionName] = useState('');
+  const [adPrice, setAdPrice] = useState('$68.00 USD');
+  const [adOriginalPrice, setAdOriginalPrice] = useState('$82.00 USD');
+  const [adProductUrl, setAdProductUrl] = useState('https://gascanco.com/collections/apparel');
+  const [adCtaText, setAdCtaText] = useState('Shop on Shopify');
+  const [adPhotos, setAdPhotos] = useState<string[]>([
+    'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80'
+  ]);
+  const [isAdDragOver, setIsAdDragOver] = useState(false);
+  const adFileInputRef = useRef<HTMLInputElement | null>(null);
+
   // URL extraction helper
   const extractUrlFromText = (text: string): string | null => {
     const match = text.match(/https?:\/\/[^\s]+/i);
@@ -618,6 +636,42 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     handleCloseModal();
   };
 
+  // Submit Advertisement (Super Admin only)
+  const handleAdvertisementSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adTitle.trim() || !adProductTitle.trim()) {
+      alert('Please fill out the campaign title and product name');
+      return;
+    }
+
+    const newAdPost: CommunityPost = {
+      id: `post-ad-${Date.now()}`,
+      title: adTitle.trim(),
+      content: adContent.trim() || 'New official release from GASCANCO Apparel. Available now on Shopify.',
+      category: 'Sponsored Drop',
+      author: currentUser,
+      dateStr: 'Just now',
+      isAdvertisement: true,
+      shopifyProduct: {
+        title: adProductTitle.trim(),
+        price: adPrice.trim() || '$48.00 USD',
+        originalPrice: adOriginalPrice.trim() || undefined,
+        productUrl: adProductUrl.trim() || 'https://gascanco.com',
+        collectionName: adCollectionName.trim() || undefined,
+        ctaText: adCtaText.trim() || 'Shop on Shopify',
+      },
+      images: adPhotos.length > 0 ? adPhotos : ['https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80'],
+      likesCount: 0,
+      commentsCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onPostAdded) {
+      onPostAdded(newAdPost);
+    }
+    handleCloseModal();
+  };
+
   const handleCloseModal = () => {
     setMode('select');
     setVehicleStep(1);
@@ -666,6 +720,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 {mode === 'event' && 'ADD AN EVENT'}
                 {mode === 'vehicle' && (editingVehicle ? 'EDIT VEHICLE' : 'ADD A VEHICLE')}
                 {mode === 'post' && 'ADD A POST'}
+                {mode === 'advertisement' && 'CREATE SHOPIFY ADVERTISEMENT'}
               </h2>
             </div>
 
@@ -756,6 +811,35 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 </div>
                 <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
               </button>
+
+              {/* Option 4: Create Advertisement (Super Admin only) */}
+              {isHardAdmin(currentUser) && (
+                <button
+                  type="button"
+                  onClick={() => setMode('advertisement')}
+                  className="group w-full flex items-center justify-between p-3.5 sm:p-5 bg-[#282828] hover:bg-[#303030] border border-[#ff4d6a]/40 hover:border-[#C8102E] transition-all cursor-pointer text-left shadow-xs"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#ff4d6a] group-hover:text-white transition-colors">
+                      <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
+                          Create Advertisement
+                        </span>
+                        <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
+                          ADMIN
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#888888] font-mono mt-0.5">
+                        Shopify Apparel & Collection Drop
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1585,6 +1669,248 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               >
                 <span>Publish Post</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ========================================================
+            MODE: CREATE ADVERTISEMENT (Super Admin Only)
+           ======================================================== */}
+        {mode === 'advertisement' && (
+          <form onSubmit={handleAdvertisementSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              <div className="p-3 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-[#ff4d6a] shrink-0" />
+                <div className="text-xs font-mono">
+                  <span className="text-white font-bold uppercase">Super Admin Access: </span>
+                  <span className="text-[#aaaaaa]">This sponsored card will be published directly to the Live feed linked to your Shopify apparel store.</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                <div className="md:col-span-7 space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                      Drop Headline / Campaign Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={adTitle}
+                      onChange={(e) => setAdTitle(e.target.value)}
+                      placeholder="e.g. OFFICIAL DROP: GASCANCO Heavyweight Work Hoodie"
+                      className="w-full px-3 py-2.5 bg-[#1a1a1c] border border-[#444444] text-white text-xs sm:text-sm font-mono focus:outline-none focus:border-[#C8102E]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                      Shopify Product Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={adProductTitle}
+                      onChange={(e) => setAdProductTitle(e.target.value)}
+                      placeholder="e.g. Heavyweight Zip Work Hoodie"
+                      className="w-full px-3 py-2.5 bg-[#1a1a1c] border border-[#444444] text-white text-xs sm:text-sm font-mono focus:outline-none focus:border-[#C8102E]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Price (USD) *
+                      </label>
+                      <input
+                        type="text"
+                        value={adPrice}
+                        onChange={(e) => setAdPrice(e.target.value)}
+                        placeholder="$68.00 USD"
+                        className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Original Price (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={adOriginalPrice}
+                        onChange={(e) => setAdOriginalPrice(e.target.value)}
+                        placeholder="$82.00 USD"
+                        className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                      Shopify Store / Product URL *
+                    </label>
+                    <input
+                      type="url"
+                      value={adProductUrl}
+                      onChange={(e) => setAdProductUrl(e.target.value)}
+                      placeholder="https://gascanco.com/collections/apparel"
+                      className="w-full px-3 py-2.5 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Collection Name
+                      </label>
+                      <input
+                        type="text"
+                        value={adCollectionName}
+                        onChange={(e) => setAdCollectionName(e.target.value)}
+                        placeholder="Garage Apparel & Gear"
+                        className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Button Label
+                      </label>
+                      <input
+                        type="text"
+                        value={adCtaText}
+                        onChange={(e) => setAdCtaText(e.target.value)}
+                        placeholder="Shop on Shopify"
+                        className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                      Campaign Description / Copy
+                    </label>
+                    <textarea
+                      value={adContent}
+                      onChange={(e) => setAdContent(e.target.value)}
+                      placeholder="Description of the apparel item, materials, fit, and garage styling..."
+                      rows={3}
+                      className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E] resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-5 space-y-3">
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa]">
+                    Product Photo / Banner
+                  </label>
+                  {adPhotos.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="relative aspect-[4/3] bg-black border border-[#444444] overflow-hidden">
+                        <img
+                          src={adPhotos[0]}
+                          alt="Ad Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setAdPhotos([])}
+                          className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-[#C8102E] text-white text-xs cursor-pointer"
+                          title="Remove photo"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); setIsAdDragOver(true); }}
+                        onDragLeave={() => setIsAdDragOver(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsAdDragOver(false);
+                          const file = e.dataTransfer.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              if (ev.target?.result) setAdPhotos([ev.target.result as string]);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        onClick={() => adFileInputRef.current?.click()}
+                        className={`p-6 border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors ${
+                          isAdDragOver ? 'border-[#C8102E] bg-[#C8102E]/10' : 'border-[#444444] bg-[#1a1a1c] hover:border-[#888888]'
+                        }`}
+                      >
+                        <Upload className="w-6 h-6 text-[#888888]" />
+                        <span className="text-xs font-mono text-[#888888] text-center">
+                          Drop photo or click to upload
+                        </span>
+                        <input
+                          ref={adFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                if (ev.target?.result) setAdPhotos([ev.target.result as string]);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setAdPhotos(['https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80'])}
+                          className="px-2 py-1 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                        >
+                          Hoodie Sample
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdPhotos(['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1200&q=80'])}
+                          className="px-2 py-1 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                        >
+                          Tee Sample
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdPhotos(['https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=1200&q=80'])}
+                          className="px-2 py-1 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                        >
+                          Snapback Sample
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-[#383838] bg-[#222224] shrink-0">
+              <button
+                type="button"
+                onClick={() => setMode('select')}
+                className="px-3 py-2 bg-[#2d2d30] hover:bg-[#3d3d40] text-white text-xs font-mono uppercase tracking-wider cursor-pointer"
+              >
+                Back
+              </button>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Publish Sponsored Drop</span>
               </button>
             </div>
           </form>

@@ -239,7 +239,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#303030] text-white">
+    <div className="min-h-screen flex flex-col bg-[#0e0e10] text-white">
       {/* Main View Router */}
       <main className="flex-1">
         {/* 1. Primary Home Page: Live Activity Feed */}
@@ -295,6 +295,7 @@ export default function App() {
               onBack={() => setActiveView({ type: 'community-builds' })}
               onSelectOwner={(ownerId) => setActiveView({ type: 'user-profile', ownerId })}
               onEditVehicle={handleOpenEditVehicle}
+              onUpdateVehicle={handleUpdateVehicle}
               onDeleteVehicle={(id) => {
                 handleDeleteVehicle(id);
                 setActiveView({ type: 'community-builds' });

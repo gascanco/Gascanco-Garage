@@ -137,6 +137,39 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         ],
         likesCount: 96
       }
+    ],
+    crewAndSponsors: [
+      {
+        id: 'crew-1',
+        name: 'Apex Speedworks',
+        role: 'Twin-Turbo & Dyno Calibration',
+        handle: '@apex_speedworks',
+        type: 'shop',
+        verified: true
+      },
+      {
+        id: 'crew-2',
+        name: 'Craftsman Race Works',
+        role: 'Chassis & Custom Roll Cage',
+        handle: '@craftsman_raceworks',
+        type: 'crew',
+        verified: true
+      },
+      {
+        id: 'crew-3',
+        name: 'Volk Racing / Rays Japan',
+        role: 'Wheel & Aero Sponsor',
+        url: 'https://rayswheels.co.jp',
+        type: 'sponsor',
+        verified: true
+      },
+      {
+        id: 'crew-4',
+        name: 'Midnight Shutter Co.',
+        role: 'Lead Track Photographer',
+        handle: '@midnight_shutter',
+        type: 'crew'
+      }
     ]
   },
   {
@@ -400,6 +433,31 @@ export const INITIAL_VEHICLES: Vehicle[] = [
           '/src/assets/images/ford_f100_ratrod_1791130497932.jpg'
         ],
         likesCount: 245
+      }
+    ],
+    crewAndSponsors: [
+      {
+        id: 'crew-f1-1',
+        name: 'Iron & Rust Fab Lab',
+        role: 'Chassis Chop & Custom Z-Frame',
+        handle: '@ironandrust_fab',
+        type: 'crew',
+        verified: true
+      },
+      {
+        id: 'crew-f1-2',
+        name: 'Vintage V8 Speed Supply',
+        role: '428 FE Big Block Assembly & Dyno',
+        handle: '@vintage_v8_supply',
+        type: 'shop',
+        verified: true
+      },
+      {
+        id: 'crew-f1-3',
+        name: 'Pinstriping by Bones',
+        role: 'Hand-Laid 1-Shot Enamel Artwork',
+        handle: '@bones_pinstripe',
+        type: 'crew'
       }
     ]
   },
@@ -1035,6 +1093,28 @@ export const INITIAL_EVENTS: GarageEvent[] = [
 ];
 
 export const INITIAL_POSTS: CommunityPost[] = [
+  {
+    id: 'post-ad-gascanco-drop-1',
+    title: 'GASCANCO Heavyweight Work Hoodie',
+    content: 'Engineered for late nights turning wrenches in cold bays. 450GSM ultra-dense heavyweight fleece, oil-resistant finish, reinforced elbow panels, and official GASCANCO badge embroidery. Available now directly on our Shopify store.',
+    category: 'Sponsored Drop',
+    author: GASCANCO_ADMIN_USER,
+    dateStr: 'Just now',
+    isAdvertisement: true,
+    shopifyProduct: {
+      title: 'GASCANCO Heavyweight Work Hoodie',
+      price: '$68.00 USD',
+      originalPrice: '$82.00 USD',
+      productUrl: 'https://gascanco.com/collections/apparel',
+      ctaText: 'Shop on Shopify',
+    },
+    images: [
+      'https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80',
+    ],
+    likesCount: 78,
+    commentsCount: 14,
+    createdAt: new Date().toISOString(),
+  },
   {
     id: 'post-yt-1',
     content: 'Just uploaded our telemetry analysis & in-car footage from the Buttonwillow CW13 shakedown session! Check the braking zone into Phil Hill: https://www.youtube.com/watch?v=0k1T4Q7r2X0',

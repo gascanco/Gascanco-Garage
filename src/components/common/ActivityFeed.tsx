@@ -4,7 +4,7 @@ import {
   Wrench, BookOpen, Clock, 
   Search, ChevronRight, Calendar, MessageSquare, MapPin, 
   Check, Play, ExternalLink, Globe, Youtube, Image as ImageIcon, X, Maximize2,
-  Pencil, Trash2, Car, Upload, Plus, ShieldCheck
+  Pencil, Trash2, Car, Upload, Plus, ShieldCheck, Layers, ShoppingBag, Tag
 } from 'lucide-react';
 import { ReactionButtons } from './ReactionButtons';
 import { ThreadedComments } from './ThreadedComments';
@@ -57,7 +57,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   limit,
   compact = false,
 }) => {
-  const [feedSearch, setFeedSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
   const [playingYoutubeId, setPlayingYoutubeId] = useState<string | null>(null);
 
@@ -352,6 +355,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         postCategory: post.category,
         likesCount: post.likesCount,
         postId: post.id,
+        isAdvertisement: post.isAdvertisement,
+        shopifyProduct: post.shopifyProduct,
       });
     });
 
@@ -359,28 +364,75 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     return list.sort((a, b) => b.timestamp - a.timestamp);
   }, [vehicles, events, posts]);
 
-  // Filter & Search (Cleaned for live feed search bar)
-  const filteredActivities = useMemo(() => {
-    let result = activities;
+  // Dynamic Locations list for Live Feed
+  const availableLocations = useMemo(() => {
+    const set = new Set<string>();
+    activities.forEach(a => {
+      if (a.owner?.location) set.add(a.owner.location);
+    });
+    return ['All Locations', ...Array.from(set).sort()];
+  }, [activities]);
 
-    if (feedSearch.trim()) {
-      const q = feedSearch.toLowerCase().trim();
-      result = result.filter(a => 
-        a.title.toLowerCase().includes(q) ||
-        a.description.toLowerCase().includes(q) ||
-        (a.vehicleName && a.vehicleName.toLowerCase().includes(q)) ||
-        a.owner.name.toLowerCase().includes(q) ||
-        a.owner.handle.toLowerCase().includes(q) ||
-        (a.badge && a.badge.toLowerCase().includes(q))
-      );
-    }
+  // Categories list for Live Feed
+  const availableCategories = useMemo(() => {
+    return [
+      'All Categories',
+      'Sponsored Drops',
+      'Community Posts',
+      'Build Updates',
+      'Event News'
+    ];
+  }, []);
+
+  const clearFilters = () => {
+    setSelectedCategory('All Categories');
+    setSelectedLocation('All Locations');
+    setSearchQuery('');
+    setIsSearchOpen(false);
+  };
+
+  const hasActiveFilters = selectedCategory !== 'All Categories' || selectedLocation !== 'All Locations' || searchQuery !== '';
+
+  // Filter & Search (Category, Location, and Search query based)
+  const filteredActivities = useMemo(() => {
+    let result = activities.filter(act => {
+      // 1. Category Filter
+      if (selectedCategory !== 'All Categories') {
+        if (selectedCategory === 'Sponsored Drops' && !act.isAdvertisement && act.postCategory !== 'Sponsored Drop') return false;
+        if (selectedCategory === 'Community Posts' && (act.type !== 'post' || act.isAdvertisement)) return false;
+        if (selectedCategory === 'Build Updates' && act.type !== 'build_update' && act.type !== 'modification') return false;
+        if (selectedCategory === 'Event News' && act.type !== 'event') return false;
+      }
+
+      // 2. Location Filter
+      if (selectedLocation !== 'All Locations') {
+        const loc = act.owner?.location?.toLowerCase() || '';
+        if (!loc.includes(selectedLocation.toLowerCase())) return false;
+      }
+
+      // 3. Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matches = 
+          act.title.toLowerCase().includes(q) ||
+          act.description.toLowerCase().includes(q) ||
+          (act.vehicleName && act.vehicleName.toLowerCase().includes(q)) ||
+          act.owner.name.toLowerCase().includes(q) ||
+          act.owner.handle.toLowerCase().includes(q) ||
+          (act.badge && act.badge.toLowerCase().includes(q)) ||
+          (act.shopifyProduct && act.shopifyProduct.title.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+
+      return true;
+    });
 
     if (limit && limit > 0) {
       result = result.slice(0, limit);
     }
 
     return result;
-  }, [activities, feedSearch, limit]);
+  }, [activities, selectedCategory, selectedLocation, searchQuery, limit]);
 
   // Spotlight vehicle for desktop sidebar
   const spotlightVehicle = useMemo(() => {
@@ -396,29 +448,112 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     <div className={compact ? "space-y-4" : "grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start"}>
       {/* Primary Column: Search & Live Activity Feed (8 cols on desktop) */}
       <div className={compact ? "space-y-4" : "lg:col-span-8 space-y-4 min-w-0"}>
-        {/* Live Feed Search Bar - Clean & Mobile Optimized (No Buttons) */}
+        {/* Unified Categories & Location Filter Toolbar (Mirrored from Builds page) */}
         {!compact && (
-          <div className="bg-[#242424] border border-[#3d3d3d] p-3 sm:p-4 shadow-sm">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
-              <input
-                type="text"
-                value={feedSearch}
-                onChange={(e) => setFeedSearch(e.target.value)}
-                placeholder="Search feed by vehicle, owner, tags, or keyword..."
-                className="w-full pl-10 pr-10 py-2.5 sm:py-3 bg-[#1c1c1c] border border-[#444444] text-xs sm:text-sm md:text-base text-white placeholder-[#777777] focus:outline-none focus:border-[#C8102E] font-mono transition-colors"
-              />
-              {feedSearch && (
+          <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
+            <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
+              {/* Category Dropdown */}
+              <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
+                <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
+                  <Layers className="w-4 h-4 text-[#C8102E] shrink-0" />
+                  <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Category:</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full bg-transparent text-xs sm:text-sm text-white focus:outline-none cursor-pointer font-mono truncate"
+                    aria-label="Filter feed by category"
+                  >
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat} className="bg-[#171719] text-white">
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedCategory !== 'All Categories' && (
+                    <button
+                      onClick={() => setSelectedCategory('All Categories')}
+                      className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
+                      title="Clear category filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Location Selector */}
+              <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
+                  <MapPin className="w-4 h-4 text-[#C8102E] shrink-0" />
+                  <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Location:</span>
+                  <select
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="w-full sm:w-auto bg-transparent text-xs sm:text-sm text-white focus:outline-none cursor-pointer font-mono truncate"
+                    aria-label="Filter feed by location"
+                  >
+                    {availableLocations.map((loc) => (
+                      <option key={loc} value={loc} className="bg-[#171719] text-white">
+                        {loc}
+                      </option>
+                    ))}
+                  </select>
+                  {hasActiveFilters && (
+                    <button
+                      onClick={clearFilters}
+                      className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
+                      title="Reset filter"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Search Toggle Button */}
                 <button
                   type="button"
-                  onClick={() => setFeedSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-white transition-colors cursor-pointer p-1"
-                  title="Clear search"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
+                    isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
+                  }`}
+                  title="Toggle keyword search"
                 >
-                  <X className="w-4 h-4" />
+                  <Search className="w-4 h-4" />
                 </button>
-              )}
+
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs sm:text-sm text-[#C8102E] hover:underline font-mono whitespace-nowrap cursor-pointer px-2 py-1 hidden sm:inline-block font-bold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Optional Keyword Search Row if opened */}
+            {isSearchOpen && (
+              <div className="mt-3 pt-3 border-t border-[#333333] relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search feed by vehicle, owner, tags, or keyword..."
+                  className="w-full pl-9 pr-8 py-2.5 bg-[#171719] border border-[#38383a] text-white placeholder-[#888888] focus:outline-none focus:border-[#C8102E] font-mono text-xs sm:text-sm"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-white cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -441,6 +576,121 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
               ? itemComments.length 
               : (act.type === 'post' ? (posts.find(p => p.id === act.postId)?.commentsCount || 0) : 0);
             const isCommentsExpanded = expandedCommentItemIds.has(itemKey);
+            const isAdvertisement = Boolean(act.isAdvertisement || act.shopifyProduct);
+
+            if (isAdvertisement) {
+              const productImg = (act.images && act.images.length > 0) ? act.images[0] : act.photoUrl;
+              const displayTitle = act.shopifyProduct?.title || act.title || 'Featured Drop';
+              const displayDesc = act.description || (posts.find(p => p.id === act.postId)?.content) || '';
+              const productUrl = act.shopifyProduct?.productUrl || 'https://gascanco.com';
+              const ctaText = act.shopifyProduct?.ctaText || 'Shop on Shopify';
+              const price = act.shopifyProduct?.price;
+              const originalPrice = act.shopifyProduct?.originalPrice;
+
+              return (
+                <article
+                  key={act.id}
+                  className="group relative bg-[#1c1c1f] border border-[#333333] hover:border-[#C8102E] transition-all duration-200 shadow-sm overflow-hidden"
+                >
+                  {/* Clean Single Container Layout: Text -> Image -> Pricing/Button */}
+                  <div className="flex flex-col">
+                    {/* 1. Header Text: Title with Sponsored on the far right, and Body Text */}
+                    <div className="p-4 sm:p-6 pb-3 sm:pb-4 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <h3 className="font-['Oswald'] text-xl sm:text-2xl font-bold uppercase text-white tracking-wide leading-snug">
+                          {displayTitle}
+                        </h3>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isHardAdmin(currentUser) && (
+                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStartEdit(act);
+                                }}
+                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-colors cursor-pointer"
+                                title="Edit advertisement"
+                              >
+                                <Pencil className="w-2.5 h-2.5 inline mr-1" /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const targetPostId = act.postId || act.id.replace('act-post-', '');
+                                  if (window.confirm('Super Admin: Delete this advertisement from the feed?')) {
+                                    onDeletePost?.(targetPostId);
+                                  }
+                                }}
+                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-colors cursor-pointer"
+                                title="Delete advertisement"
+                              >
+                                <Trash2 className="w-2.5 h-2.5 inline mr-1 text-[#ff4d4d]" /> Delete
+                              </button>
+                            </div>
+                          )}
+                          <span className="text-[10px] sm:text-xs font-mono uppercase tracking-widest text-[#ff4d6a] font-bold">
+                            Sponsored
+                          </span>
+                        </div>
+                      </div>
+                      {displayDesc && (
+                        <p className="text-xs sm:text-sm text-[#cccccc] leading-relaxed whitespace-pre-line">
+                          {displayDesc}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 2. Middle Image (In between body text & pricing/button) */}
+                    {productImg && (
+                      <div
+                        className="w-full relative aspect-video sm:aspect-[21/9] bg-black border-y border-[#2d2d30] overflow-hidden cursor-pointer group/img"
+                        onClick={() => setActiveLightboxImage(productImg)}
+                        title="Click to view full image"
+                      >
+                        <img
+                          src={productImg}
+                          alt={displayTitle}
+                          className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/img:opacity-100">
+                          <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Bottom Row: Pricing / Original Pricing / Button */}
+                    <div className="p-4 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-3 bg-[#18181b]">
+                      {price && (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-base sm:text-lg font-bold text-white">
+                            {price}
+                          </span>
+                          {originalPrice && (
+                            <span className="font-mono text-xs text-[#777777] line-through">
+                              {originalPrice}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <a
+                        href={productUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-sm ml-auto"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>{ctaText}</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              );
+            }
 
             return (
               <article
@@ -449,26 +699,36 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 className="group relative bg-[#242424] border border-[#383838] hover:border-[#C8102E] transition-all duration-200 shadow-sm overflow-hidden"
               >
                 {/* 1. Clean Top Header: Author + Clean Date on left, Vehicle / Tag on right */}
-                <div className="px-4 py-2.5 flex items-center justify-between gap-3 border-b border-[#2d2d2d] bg-[#202020]">
-                  {/* Left: Author Avatar & Name & Date */}
-                  <div className="flex items-center gap-2.5">
+                <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 border-b border-[#2d2d2d] bg-[#202020]">
+                  {/* Left: Author Avatar (Larger: w-12 h-12 sm:w-14 sm:h-14) & Name & Date */}
+                  <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
                     <img
                       src={act.owner.avatar}
                       alt={act.owner.name}
                       referrerPolicy="no-referrer"
-                      className="w-8 h-8 shrink-0 object-cover border border-[#C8102E]"
+                      className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 object-cover border-2 border-[#C8102E] shadow-sm"
                     />
-                    <div className="flex items-center gap-2 text-xs font-mono flex-wrap">
-                      <span className="font-['Oswald'] font-bold text-white uppercase tracking-wider group-hover/author:text-[#C8102E] transition-colors">
-                        {act.owner.name}
-                      </span>
-                      {isHardAdmin(act.owner) && (
-                        <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] tracking-wider uppercase inline-flex items-center gap-0.5">
-                          <ShieldCheck className="w-2.5 h-2.5" /> ADMIN
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-['Oswald'] text-base sm:text-lg font-bold text-white uppercase tracking-wider group-hover/author:text-[#C8102E] transition-colors truncate">
+                          {act.owner.name}
                         </span>
-                      )}
-                      <span className="text-[#555555]">•</span>
-                      <span className="text-[#888888]">{formatCleanDate(act.dateStr)}</span>
+                        {isHardAdmin(act.owner) && (
+                          <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-0.5 shadow-xs">
+                            <ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> ADMIN
+                          </span>
+                        )}
+                        {act.isAdvertisement && (
+                          <span className="px-1.5 py-0.5 bg-[#171719] border border-[#ff4d6a]/40 text-[#ff4d6a] font-['Oswald'] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-1">
+                            <Tag className="w-2.5 h-2.5" /> SPONSORED
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-[#888888] flex-wrap">
+                        {act.owner.location && <span className="text-[#aaaaaa]">{act.owner.location}</span>}
+                        {act.owner.location && <span className="text-[#555555]">•</span>}
+                        <span>{formatCleanDate(act.dateStr)}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -930,10 +1190,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             <p className="text-xs text-[#aaaaaa] mt-1">
               Try switching your filter or clearing your search query.
             </p>
-            {feedSearch && (
+            {searchQuery && (
               <button
                 type="button"
-                onClick={() => setFeedSearch('')}
+                onClick={() => setSearchQuery('')}
                 className="mt-4 px-3 py-1.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#333333] hover:bg-[#444444] text-white transition-colors"
               >
                 Clear Search

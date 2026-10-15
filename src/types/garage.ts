@@ -71,6 +71,16 @@ export const isHardAdmin = (owner?: Partial<Owner> | null): boolean => {
   return false;
 };
 
+export interface BuildCrewOrSponsor {
+  id: string;
+  name: string;
+  role: string; // e.g. "Fabrication & Cage", "Custom Paint & Airbrush", "Dyno Tuning", "Primary Sponsor", "Photography"
+  handle?: string;
+  url?: string;
+  type: 'crew' | 'sponsor' | 'shop';
+  verified?: boolean;
+}
+
 export interface Vehicle {
   id: string;
   year: number;
@@ -90,6 +100,7 @@ export interface Vehicle {
   category?: VehicleCategory;
   modifications?: Modification[];
   buildUpdates?: BuildUpdate[];
+  crewAndSponsors?: BuildCrewOrSponsor[];
   featured?: boolean;
   viewsCount: number;
   likesCount: number;
@@ -165,6 +176,16 @@ export interface CommunityPost {
   likesCount: number;
   commentsCount?: number;
   createdAt: string;
+  isAdvertisement?: boolean;
+  shopifyProduct?: {
+    title: string;
+    price: string;
+    originalPrice?: string;
+    productUrl: string;
+    collectionName?: string;
+    badge?: string;
+    ctaText?: string;
+  };
 }
 
 export interface PostComment {
@@ -203,5 +224,7 @@ export interface ActivityItem {
   eventData?: GarageEvent;
   postCategory?: string;
   postId?: string;
+  isAdvertisement?: boolean;
+  shopifyProduct?: CommunityPost['shopifyProduct'];
 }
 

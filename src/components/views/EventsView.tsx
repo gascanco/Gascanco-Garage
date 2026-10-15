@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { GarageEvent, Owner } from '../../types/garage';
 import { 
   Calendar, MapPin, Users, Plus, Check, 
-  Share2, Clock, ChevronRight, X, Bell
+  Share2, Clock, ChevronRight, X, Bell, Layers, Search
 } from 'lucide-react';
 
 interface EventsViewProps {
@@ -20,11 +20,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
   onSelectOwner,
   onOpenAddEvent,
 }) => {
-  const [selectedType, setSelectedType] = useState<string>('All');
+  const [selectedType, setSelectedType] = useState<string>('All Categories');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const EVENT_CATEGORIES = [
-    'All',
+    'All Categories',
     'Canyon Cruise',
     'Track Day',
     'Cars & Coffee',
@@ -53,19 +55,33 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
   const filteredEvents = useMemo(() => {
     return events.filter(evt => {
-      const matchesType = selectedType === 'All' || evt.eventType === selectedType;
+      const matchesType = selectedType === 'All Categories' || evt.eventType === selectedType;
       const matchesLocation = selectedLocation === 'All Locations' || 
         evt.location.toLowerCase().includes(selectedLocation.toLowerCase());
-      return matchesType && matchesLocation;
+      
+      let matchesSearch = true;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        matchesSearch = 
+          evt.title.toLowerCase().includes(q) ||
+          evt.description.toLowerCase().includes(q) ||
+          evt.location.toLowerCase().includes(q) ||
+          evt.organizer.name.toLowerCase().includes(q) ||
+          evt.eventType.toLowerCase().includes(q);
+      }
+
+      return matchesType && matchesLocation && matchesSearch;
     });
-  }, [events, selectedType, selectedLocation]);
+  }, [events, selectedType, selectedLocation, searchQuery]);
 
   const clearFilters = () => {
-    setSelectedType('All');
+    setSelectedType('All Categories');
     setSelectedLocation('All Locations');
+    setSearchQuery('');
+    setIsSearchOpen(false);
   };
 
-  const hasActiveFilters = selectedType !== 'All' || selectedLocation !== 'All Locations';
+  const hasActiveFilters = selectedType !== 'All Categories' || selectedLocation !== 'All Locations' || searchQuery !== '';
 
   // Events user is attending or organizing
   const userRsvpEvents = useMemo(() => {
@@ -151,13 +167,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Filter Bar & Events Grid (8 cols on desktop) */}
         <div className="lg:col-span-8 space-y-6 min-w-0">
-          {/* Categories & Location Filter Toolbar (Mirrored Builds Page 2-Column Mobile Toolbar Layout) */}
-          <div className="mb-3 sm:mb-5 sm:bg-[#242424] sm:border sm:border-[#3d3d3d] sm:p-4 sm:shadow-sm">
+          {/* Unified Categories & Location Filter Toolbar (Exact match with Builds page) */}
+          <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
             <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
-              {/* Category Dropdown - Featuring categories in drop down menu instead of buttons */}
+              {/* Category Dropdown */}
               <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
-                <div className="flex items-center gap-2 w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 sm:px-4 sm:py-3">
-                  <Calendar className="w-4 h-4 text-[#C8102E] shrink-0" />
+                <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
+                  <Layers className="w-4 h-4 text-[#C8102E] shrink-0" />
                   <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Category:</span>
                   <select
                     value={selectedType}
@@ -166,14 +182,14 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     aria-label="Filter events by category"
                   >
                     {EVENT_CATEGORIES.map(category => (
-                      <option key={category} value={category} className="bg-[#1c1c1c] text-white">
+                      <option key={category} value={category} className="bg-[#171719] text-white">
                         {category}
                       </option>
                     ))}
                   </select>
-                  {selectedType !== 'All' && (
+                  {selectedType !== 'All Categories' && (
                     <button
-                      onClick={() => setSelectedType('All')}
+                      onClick={() => setSelectedType('All Categories')}
                       className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
                       title="Clear category filter"
                     >
@@ -183,9 +199,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 </div>
               </div>
 
-              {/* Location Selector - Standard Card Width on Mobile */}
+              {/* Location Selector */}
               <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
-                <div className="flex items-center gap-2 w-full sm:w-auto bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 sm:px-4 sm:py-3">
+                <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
                   <MapPin className="w-4 h-4 text-[#C8102E] shrink-0" />
                   <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Location:</span>
                   <select
@@ -195,21 +211,33 @@ export const EventsView: React.FC<EventsViewProps> = ({
                     aria-label="Filter events by location"
                   >
                     {availableLocations.map((loc) => (
-                      <option key={loc} value={loc} className="bg-[#1c1c1c] text-white">
+                      <option key={loc} value={loc} className="bg-[#171719] text-white">
                         {loc}
                       </option>
                     ))}
                   </select>
-                  {selectedLocation !== 'All Locations' && (
+                  {hasActiveFilters && (
                     <button
-                      onClick={() => setSelectedLocation('All Locations')}
+                      onClick={clearFilters}
                       className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
-                      title="Clear location filter"
+                      title="Reset filter"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
+
+                {/* Search Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
+                    isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
+                  }`}
+                  title="Toggle keyword search"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
 
                 {hasActiveFilters && (
                   <button
@@ -221,6 +249,29 @@ export const EventsView: React.FC<EventsViewProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Optional Keyword Search Row if opened */}
+            {isSearchOpen && (
+              <div className="mt-3 pt-3 border-t border-[#333333] relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search events by title, venue, host, or keyword..."
+                  className="w-full pl-9 pr-8 py-2.5 bg-[#171719] border border-[#38383a] text-white placeholder-[#888888] focus:outline-none focus:border-[#C8102E] font-mono text-xs sm:text-sm"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-white cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Events Grid */}

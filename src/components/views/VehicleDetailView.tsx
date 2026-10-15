@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Vehicle, ModificationCategory, BuildUpdate, Owner, PostComment, isHardAdmin } from '../../types/garage';
+import React, { useState, useMemo } from 'react';
+import { Vehicle, ModificationCategory, BuildUpdate, Owner, PostComment, isHardAdmin, BuildCrewOrSponsor } from '../../types/garage';
 import { 
   ArrowLeft, Share2, Wrench, Calendar, MapPin, 
   ExternalLink, ChevronLeft, ChevronRight, Check, Sparkles, 
   Layers, MessageSquare, Gauge, Eye, X, PlusCircle, ThumbsDown, Camera,
-  Trash2, ShieldCheck
+  Trash2, ShieldCheck, ShoppingBag, Tag, Users, Award, Plus
 } from 'lucide-react';
 import { ReactionButtons } from '../common/ReactionButtons';
 import { LoveYouGesture } from '../common/LoveYouGesture';
@@ -16,6 +16,7 @@ interface VehicleDetailViewProps {
   onBack: () => void;
   onSelectOwner?: (ownerId: string) => void;
   onEditVehicle: (vehicleId: string) => void;
+  onUpdateVehicle?: (updatedVehicle: Vehicle) => void;
   onDeleteVehicle?: (vehicleId: string) => void;
   onAddUpdate?: (vehicleId: string) => void;
   onLikeToggle: (vehicleId: string) => void;
@@ -36,6 +37,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   onBack,
   onSelectOwner,
   onEditVehicle,
+  onUpdateVehicle,
   onDeleteVehicle,
   onAddUpdate,
   onLikeToggle,
@@ -55,10 +57,92 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [activeTab, setActiveTab] = useState<'specs' | 'photos'>('specs');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFollowing, setIsFollowing] = useState(vehicle.owner.isFollowing || false);
-  const [showShopifyNotice, setShowShopifyNotice] = useState(false);
   const [expandedUpdateComments, setExpandedUpdateComments] = useState<Set<string>>(new Set());
   const [likedUpdateIds, setLikedUpdateIds] = useState<Set<string>>(new Set());
   const [dislikedUpdateIds, setDislikedUpdateIds] = useState<Set<string>>(new Set());
+
+  // Build Crew & Sponsor Shoutouts State (Option #4)
+  const [isAddShoutoutModalOpen, setIsAddShoutoutModalOpen] = useState(false);
+  const [shoutoutName, setShoutoutName] = useState('');
+  const [shoutoutRole, setShoutoutRole] = useState('Chassis & Cage');
+  const [shoutoutType, setShoutoutType] = useState<'crew' | 'sponsor' | 'shop'>('shop');
+  const [shoutoutHandle, setShoutoutHandle] = useState('');
+  const [shoutoutUrl, setShoutoutUrl] = useState('');
+  const [shoutoutVerified, setShoutoutVerified] = useState(true);
+
+  const canManageShoutouts = isHardAdmin(currentUser) || currentUser.id === vehicle.owner.id;
+
+  const currentCrewAndSponsors: BuildCrewOrSponsor[] = useMemo(() => {
+    if (vehicle.crewAndSponsors && vehicle.crewAndSponsors.length > 0) {
+      return vehicle.crewAndSponsors;
+    }
+    const cat = (vehicle.category || '').toLowerCase();
+    if (cat.includes('sxs') || cat.includes('powersports')) {
+      return [
+        { id: 'c-def-1', name: 'Desert Fabworks', role: 'Long-Travel Suspension & Cage', handle: '@desert_fabworks', type: 'crew', verified: true },
+        { id: 'c-def-2', name: 'Rigid Industries', role: 'Baja Race Lighting Partner', url: 'https://rigidindustries.com', type: 'sponsor', verified: true },
+        { id: 'c-def-3', name: 'Shock Therapy', role: 'Dual-Rate Springs & Valving Tune', handle: '@shocktherapy', type: 'shop', verified: true }
+      ];
+    }
+    if (cat.includes('muscle') || cat.includes('classic') || cat.includes('rat')) {
+      return [
+        { id: 'c-def-1', name: 'Iron & Rust Fab Lab', role: 'Chassis Chop & Custom Z-Frame', handle: '@ironandrust_fab', type: 'crew', verified: true },
+        { id: 'c-def-2', name: 'Vintage V8 Speed Supply', role: 'Engine Machining & Dyno', handle: '@vintage_v8_supply', type: 'shop', verified: true },
+        { id: 'c-def-3', name: 'Pinstriping by Bones', role: 'Hand-Laid 1-Shot Enamel Artwork', handle: '@bones_pinstripe', type: 'crew' }
+      ];
+    }
+    if (cat.includes('truck') || cat.includes('4x4') || cat.includes('overland')) {
+      return [
+        { id: 'c-def-1', name: 'Apex Air Ride Co.', role: 'Bagged Chassis & Air Management', handle: '@apex_airride', type: 'crew', verified: true },
+        { id: 'c-def-2', name: 'Billet Specialties', role: 'Custom Forged Wheels', url: 'https://billetspecialties.com', type: 'sponsor', verified: true },
+        { id: 'c-def-3', name: 'Full Throttle Customs', role: 'Custom Metal Bed & Bodywork', handle: '@fullthrottle_customs', type: 'shop' }
+      ];
+    }
+    return [
+      { id: 'c-def-1', name: 'Apex Speedworks', role: 'Twin-Turbo & Dyno Calibration', handle: '@apex_speedworks', type: 'shop', verified: true },
+      { id: 'c-def-2', name: 'Craftsman Race Works', role: 'Chassis & Custom Roll Cage', handle: '@craftsman_raceworks', type: 'crew', verified: true },
+      { id: 'c-def-3', name: 'Volk Racing / Rays Japan', role: 'Wheel & Aero Program', url: 'https://rayswheels.co.jp', type: 'sponsor', verified: true },
+      { id: 'c-def-4', name: 'Midnight Shutter Co.', role: 'Lead Track Photographer', handle: '@midnight_shutter', type: 'crew' }
+    ];
+  }, [vehicle]);
+
+  const handleAddShoutout = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shoutoutName.trim()) return;
+
+    const newShoutout: BuildCrewOrSponsor = {
+      id: `crew-${Date.now()}`,
+      name: shoutoutName.trim(),
+      role: shoutoutRole.trim(),
+      type: shoutoutType,
+      handle: shoutoutHandle.trim() ? (shoutoutHandle.startsWith('@') ? shoutoutHandle.trim() : `@${shoutoutHandle.trim()}`) : undefined,
+      url: shoutoutUrl.trim() || undefined,
+      verified: isHardAdmin(currentUser) ? shoutoutVerified : false,
+    };
+
+    const updatedList = [...currentCrewAndSponsors, newShoutout];
+    const updatedVehicle: Vehicle = {
+      ...vehicle,
+      crewAndSponsors: updatedList,
+      updatedAt: new Date().toISOString().split('T')[0]
+    };
+
+    onUpdateVehicle?.(updatedVehicle);
+    setIsAddShoutoutModalOpen(false);
+    setShoutoutName('');
+    setShoutoutHandle('');
+    setShoutoutUrl('');
+  };
+
+  const handleDeleteShoutout = (shoutoutId: string) => {
+    const updatedList = currentCrewAndSponsors.filter(item => item.id !== shoutoutId);
+    const updatedVehicle: Vehicle = {
+      ...vehicle,
+      crewAndSponsors: updatedList,
+      updatedAt: new Date().toISOString().split('T')[0]
+    };
+    onUpdateVehicle?.(updatedVehicle);
+  };
 
   const handleToggleUpdateLike = (updateId: string) => {
     setLikedUpdateIds(prev => {
@@ -386,7 +470,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             {/* Owner Spotlight Sidebar Box */}
             <div className="rounded-lg border border-[#3d3d3d] bg-[#242424] p-5">
               <span className="text-[11px] font-mono text-[#C8102E] uppercase tracking-wider block mb-3">
-                WRENCHED BY
+                BUILT BY
               </span>
               <div className="flex items-center gap-3">
                 <img
@@ -434,40 +518,135 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               )}
             </div>
 
-            {/* Shopify Store Connection Card */}
-            <div className="rounded-lg border border-[#293245] bg-[#141823] p-5">
-              <div className="flex items-center gap-1.5 text-xs font-mono text-[#ffffff] mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>GASCANCO STORE COMPATIBILITY</span>
+            {/* BUILD CREW & SPONSOR SHOUTOUTS (Option #4) */}
+            <div className="rounded-lg border border-[#38383a] bg-[#1c1c1e] p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5 text-xs font-mono text-[#C8102E]">
+                  <Users className="w-3.5 h-3.5" />
+                  <span className="font-bold tracking-wider">BUILD COLLABORATORS</span>
+                </div>
+                <span className="text-[10px] font-mono text-[#888888] uppercase">
+                  {currentCrewAndSponsors.length} {currentCrewAndSponsors.length === 1 ? 'Shoutout' : 'Shoutouts'}
+                </span>
               </div>
-              <h4 className="font-['Oswald'] text-xl font-bold uppercase text-white">
-                Shop parts for this chassis
-              </h4>
-              <p className="text-xs text-[#9aa6b8] mt-2 leading-relaxed">
-                Browse apparel, garage accessories, and chassis-specific parts engineered for {vehicle.make} enthusiasts.
+
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-['Oswald'] text-xl font-bold uppercase text-white leading-snug">
+                  Build Crew & Sponsors
+                </h4>
+                {canManageShoutouts && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddShoutoutModalOpen(true)}
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[#262628] hover:bg-[#C8102E] text-[#dddddd] hover:text-white border border-[#444446] hover:border-[#C8102E] text-[11px] font-mono uppercase tracking-wider transition-colors cursor-pointer group"
+                    title="Add a crew member, fabricator, or sponsor shoutout"
+                  >
+                    <Plus className="w-3 h-3 text-[#C8102E] group-hover:text-white" />
+                    <span>+ Add</span>
+                  </button>
+                )}
+              </div>
+
+              <p className="text-xs text-[#aaaaaa] mt-1.5 leading-relaxed">
+                Shops, fabricators, dyno tuners, and sponsors who turned wrenches or backed this build.
               </p>
-              <div className="mt-4">
+
+              {/* Roster List */}
+              <div className="mt-4 space-y-2.5">
+                {currentCrewAndSponsors.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 bg-[#151517] border border-[#2e2e30] hover:border-[#C8102E]/60 transition-colors flex items-start justify-between gap-3 group"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-sm bg-[#222226] border border-[#38383a] flex items-center justify-center shrink-0 mt-0.5">
+                        {item.type === 'sponsor' ? (
+                          <Award className="w-4 h-4 text-[#ffd700]" />
+                        ) : item.type === 'shop' ? (
+                          <Wrench className="w-4 h-4 text-[#C8102E]" />
+                        ) : (
+                          <Users className="w-4 h-4 text-[#38bdf8]" />
+                        )}
+                      </div>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase tracking-wide truncate">
+                            {item.name}
+                          </span>
+                          {item.verified && (
+                            <span title="Verified Garage Partner">
+                              <ShieldCheck className="w-3.5 h-3.5 text-[#C8102E] inline-block shrink-0" />
+                            </span>
+                          )}
+                          <span className={`text-[9px] font-mono uppercase px-1 py-0.5 rounded-2xs ${
+                            item.type === 'sponsor' 
+                              ? 'bg-[#ffd700]/15 text-[#ffd700] border border-[#ffd700]/30' 
+                              : item.type === 'shop'
+                              ? 'bg-[#C8102E]/15 text-[#ff4d6a] border border-[#C8102E]/30'
+                              : 'bg-[#38bdf8]/15 text-[#38bdf8] border border-[#38bdf8]/30'
+                          }`}>
+                            {item.type}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] font-mono text-[#C8102E] tracking-wider uppercase">
+                          {item.role}
+                        </div>
+
+                        {(item.handle || item.url) && (
+                          <div className="flex items-center gap-2 pt-0.5 text-[11px] font-mono text-[#888888]">
+                            {item.handle && (
+                              <span className="text-[#aaaaaa] hover:text-white transition-colors truncate">
+                                {item.handle}
+                              </span>
+                            )}
+                            {item.url && (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[#888888] hover:text-[#C8102E] transition-colors"
+                              >
+                                <span>Visit Link</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {canManageShoutouts && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteShoutout(item.id)}
+                        className="text-[#666666] hover:text-[#ff4d4d] p-1 transition-colors cursor-pointer shrink-0 opacity-0 group-hover:opacity-100"
+                        title="Remove shoutout"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom Add or Invite Button */}
+              {canManageShoutouts ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowShopifyNotice(true);
-                    setTimeout(() => setShowShopifyNotice(false), 3000);
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded bg-[#1e2536] hover:bg-[#283247] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider border border-[#323d53] transition-colors cursor-pointer"
+                  onClick={() => setIsAddShoutoutModalOpen(true)}
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#262628] hover:bg-[#C8102E] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-[#38383a] hover:border-[#C8102E]"
                 >
-                  {showShopifyNotice ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-[#10b981]" />
-                      <span className="text-[#10b981]">Gascanco {vehicle.make} Collection Filtered</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Explore {vehicle.make} Collection</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </>
-                  )}
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Crew / Sponsor Shoutout</span>
                 </button>
-              </div>
+              ) : (
+                <div className="mt-4 p-2.5 bg-[#171719] border border-[#2e2e30] text-center">
+                  <span className="text-[11px] font-mono text-[#777777]">
+                    Collaborated on this build? Mention <span className="text-[#aaaaaa]">@{vehicle.owner.handle}</span> to be featured.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Related Community Builds */}
@@ -573,6 +752,158 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             onClick={() => setActiveLightboxImage(null)}
             className="max-h-[96vh] max-w-[96vw] w-auto h-auto object-contain cursor-pointer transition-opacity duration-150 hover:opacity-95"
           />
+        </div>
+      )}
+
+      {/* Modal: Add Build Crew or Sponsor Shoutout */}
+      {isAddShoutoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-[#1c1c1e] border border-[#38383a] p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2e2e30]">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#C8102E]" />
+                <h3 className="font-['Oswald'] text-lg font-bold uppercase text-white">
+                  Add Crew or Sponsor Shoutout
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddShoutoutModalOpen(false)}
+                className="text-[#888888] hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddShoutout} className="space-y-4 text-xs font-mono">
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1.5 text-[11px]">
+                  Collaborator / Shop / Sponsor Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={shoutoutName}
+                  onChange={(e) => setShoutoutName(e.target.value)}
+                  placeholder="e.g. Apex Speedworks, Rigid Industries"
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1.5 text-[11px]">
+                  Role / Contribution *
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 mb-2">
+                  {[
+                    'Chassis & Cage',
+                    'Custom Paint & Airbrush',
+                    'Dyno & ECU Tuning',
+                    'Suspension & Air Ride',
+                    'Primary Sponsor',
+                    'Photography & Media'
+                  ].map(preset => (
+                    <button
+                      type="button"
+                      key={preset}
+                      onClick={() => setShoutoutRole(preset)}
+                      className={`px-2 py-1 text-[10px] uppercase text-left border transition-colors cursor-pointer truncate ${
+                        shoutoutRole === preset
+                          ? 'bg-[#C8102E] text-white border-[#C8102E]'
+                          : 'bg-[#171719] text-[#888888] border-[#333333] hover:text-white'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={shoutoutRole}
+                  onChange={(e) => setShoutoutRole(e.target.value)}
+                  placeholder="Or enter custom role..."
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1.5 text-[11px]">
+                  Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['shop', 'crew', 'sponsor'] as const).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setShoutoutType(type)}
+                      className={`py-2 text-[11px] uppercase font-bold text-center border transition-colors cursor-pointer ${
+                        shoutoutType === type
+                          ? 'bg-[#C8102E] text-white border-[#C8102E]'
+                          : 'bg-[#171719] text-[#888888] border-[#38383a] hover:text-white'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1.5 text-[11px]">
+                  Instagram Handle (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={shoutoutHandle}
+                  onChange={(e) => setShoutoutHandle(e.target.value)}
+                  placeholder="@apex_speedworks"
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1.5 text-[11px]">
+                  Website URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={shoutoutUrl}
+                  onChange={(e) => setShoutoutUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              {isHardAdmin(currentUser) && (
+                <label className="flex items-center gap-2 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={shoutoutVerified}
+                    onChange={(e) => setShoutoutVerified(e.target.checked)}
+                    className="accent-[#C8102E]"
+                  />
+                  <span className="text-[#dddddd] text-[11px]">Mark as Verified Partner</span>
+                </label>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2e2e30]">
+                <button
+                  type="button"
+                  onClick={() => setIsAddShoutoutModalOpen(false)}
+                  className="px-4 py-2 bg-[#222224] text-[#aaaaaa] hover:text-white border border-[#38383a] uppercase font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white uppercase font-bold text-xs font-['Oswald'] tracking-wider shadow-sm cursor-pointer"
+                >
+                  Save Shoutout
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

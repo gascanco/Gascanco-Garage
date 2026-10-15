@@ -129,11 +129,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         )}
 
         {/* Categories & Location Filter Toolbar (Mirrored 2-col dropdown menu layout on mobile, clean flex on desktop) */}
-        <div className="mb-3 sm:mb-5 sm:bg-[#242424] sm:border sm:border-[#3d3d3d] sm:p-4 sm:shadow-sm">
+        <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
             {/* Category Dropdown - Featuring categories instead of a search bar */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
-              <div className="flex items-center gap-2 w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
                 <Layers className="w-4 h-4 text-[#C8102E] shrink-0" />
                 <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Category:</span>
                 <select
@@ -143,7 +143,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                   aria-label="Filter builds by category"
                 >
                   {availableCategories.map((cat) => (
-                    <option key={cat} value={cat} className="bg-[#1c1c1c] text-white">
+                    <option key={cat} value={cat} className="bg-[#171719] text-white">
                       {cat}
                     </option>
                   ))}
@@ -162,7 +162,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
             {/* Location Selector - Standard Card Width on Mobile */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
-              <div className="flex items-center gap-2 w-full sm:w-auto bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
                 <MapPin className="w-4 h-4 text-[#C8102E] shrink-0" />
                 <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Location:</span>
                 <select
@@ -172,7 +172,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                   aria-label="Filter builds by location"
                 >
                   {availableLocations.map((loc) => (
-                    <option key={loc} value={loc} className="bg-[#1c1c1c] text-white">
+                    <option key={loc} value={loc} className="bg-[#171719] text-white">
                       {loc}
                     </option>
                   ))}
@@ -188,12 +188,12 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 )}
               </div>
 
-              {/* Optional Search Toggle Button */}
+              {/* Search Toggle Button */}
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className={`p-2.5 sm:p-3 border transition-colors cursor-pointer hidden sm:flex items-center justify-center ${
-                  isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#1c1c1c] text-[#888888] hover:text-white border-[#444444]'
+                className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
+                  isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
                 }`}
                 title="Toggle keyword search"
               >

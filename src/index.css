@@ -5,10 +5,10 @@
   --font-body: "Oswald", "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  --color-gascanco-grey-base: #303030;
-  --color-gascanco-grey-dark: #202020;
-  --color-gascanco-grey-card: #282828;
-  --color-gascanco-grey-border: #444444;
+  --color-gascanco-grey-base: #0e0e10;
+  --color-gascanco-grey-dark: #141416;
+  --color-gascanco-grey-card: #1c1c1e;
+  --color-gascanco-grey-border: #38383a;
   --color-gascanco-red: #C8102E;
   --color-gascanco-red-hover: #e01334;
 }
@@ -45,7 +45,7 @@ html {
 
 body {
   font-family: var(--font-body);
-  background-color: #303030;
+  background-color: #0e0e10;
   color: #ffffff;
   overflow-x: hidden;
   min-height: 100vh;
