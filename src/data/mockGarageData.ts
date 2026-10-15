@@ -1,4 +1,4 @@
-import { Vehicle, Owner, GarageEvent, CommunityPost, PostComment } from '../types/garage';
+import { Vehicle, Owner, GarageEvent, CommunityPost, PostComment, SpotlightConfig, CommunityPoll } from '../types/garage';
 
 export const GASCANCO_ADMIN_USER: Owner = {
   id: 'user-gascanco-admin',
@@ -1430,4 +1430,47 @@ export const INITIAL_COMMENTS: PostComment[] = [
     dislikesCount: 0,
   }
 ];
+ 
+export const INITIAL_SPOTLIGHT_CONFIG: SpotlightConfig = {
+   vehicleId: 'veh-skyline-r34',
+   badge: 'COMMUNITY SPOTLIGHT',
+   headline: 'Track Dedicated BNR34 V-Spec',
+   reason: 'Curated by GASCANCO Admin for authentic early-2000s Daikoku street inspiration and meticulously balanced 585whp twin-turbo execution.',
+   active: true,
+   updatedAt: '2024-10-15',
+ };
+ 
+export const INITIAL_POLLS: CommunityPoll[] = [
+   {
+     id: 'poll-engine-platform',
+     question: 'Ultimate Weekend Track Day Engine Platform?',
+     description: 'Balancing reliability, powerband, aftermarket parts support, and high-RPM thrills on technical road courses.',
+     category: 'Engine Tech & Track',
+     author: GASCANCO_ADMIN_USER,
+     status: 'active',
+     createdAt: '2 hours ago',
+     totalVotes: 326,
+     options: [
+       { id: 'opt-1', text: 'Honda K20 / K24 High-Rev VTEC', votes: 142, voterUserIds: [] },
+       { id: 'opt-2', text: 'Toyota 2JZ-GTE Turbo Inline-6', votes: 88, voterUserIds: [] },
+       { id: 'opt-3', text: 'BMW B58 3.0L TwinPower Turbo', votes: 64, voterUserIds: [] },
+       { id: 'opt-4', text: 'GM LS3 6.2L Naturally Aspirated V8', votes: 32, voterUserIds: [] },
+     ],
+   },
+   {
+     id: 'poll-meet-style',
+     question: 'Next GASCANCO Sunset Meet Location:',
+     description: 'Help us choose the next gathering spot with ample lighting, coffee vendors, and zero-tolerance sound regulations.',
+     category: 'Community Events',
+     author: GASCANCO_ADMIN_USER,
+     status: 'active',
+     createdAt: '1 day ago',
+     totalVotes: 189,
+     options: [
+       { id: 'loc-1', text: 'Huntington Beach Coastal Lot (Pacific Coast Hwy)', votes: 94, voterUserIds: [] },
+       { id: 'loc-2', text: 'Ortega Highway Mountain Lookout Overlook', votes: 56, voterUserIds: [] },
+       { id: 'loc-3', text: 'Downtown Los Angeles Arts District Rooftop', votes: 39, voterUserIds: [] },
+     ],
+   }
+ ];
 

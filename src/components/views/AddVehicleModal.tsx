@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Vehicle, VehicleCategory, Owner, BuildUpdate, 
-  GarageEvent, CommunityPost, isHardAdmin
+  GarageEvent, CommunityPost, isHardAdmin, CommunityPoll
 } from '../../types/garage';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
 import { 
@@ -10,10 +10,10 @@ import {
   Clock, Tag, Flame, Plus, ChevronRight, Upload, Loader2, 
   Image as ImageIcon, RefreshCw, RotateCcw, AlertCircle, 
   Wand2, Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube,
-  ShoppingBag, ShieldCheck
+  ShoppingBag, ShieldCheck, BarChart3, Vote
 } from 'lucide-react';
 
-export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement';
+export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll';
 
 interface AddVehicleModalProps {
   isOpen: boolean;
@@ -26,6 +26,7 @@ interface AddVehicleModalProps {
   onBuildUpdateAdded?: (payload: { vehicleId: string; update: BuildUpdate }) => void;
   onEventAdded?: (newEvent: GarageEvent) => void;
   onPostAdded?: (newPost: CommunityPost) => void;
+  onPollAdded?: (newPoll: CommunityPoll) => void;
   initialMode?: AddModalMode;
 }
 
@@ -40,6 +41,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   onBuildUpdateAdded,
   onEventAdded,
   onPostAdded,
+  onPollAdded,
   initialMode = 'select',
 }) => {
   const [mode, setMode] = useState<AddModalMode>(initialMode);
@@ -370,6 +372,70 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   ]);
   const [isAdDragOver, setIsAdDragOver] = useState(false);
   const adFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ----------------------------------------------------
+  // 6. COMMUNITY POLL STATE (Super Admin Only)
+  // ----------------------------------------------------
+  const [pollQuestion, setPollQuestion] = useState('Ultimate Weekend Track Day Engine Platform?');
+  const [pollCategory, setPollCategory] = useState('Engine Tech & Track');
+  const [pollDescription, setPollDescription] = useState('Balancing reliability, powerband, aftermarket parts support, and high-RPM thrills on technical road courses.');
+  const [pollOptions, setPollOptions] = useState<string[]>([
+    'Honda K20 / K24 High-Rev VTEC',
+    'Toyota 2JZ-GTE Turbo Inline-6',
+    'BMW B58 3.0L TwinPower Turbo',
+    'GM LS3 6.2L Naturally Aspirated V8'
+  ]);
+
+  const handleAddPollOption = () => {
+    if (pollOptions.length < 6) {
+      setPollOptions(prev => [...prev, '']);
+    }
+  };
+
+  const handleRemovePollOption = (idx: number) => {
+    if (pollOptions.length > 2) {
+      setPollOptions(prev => prev.filter((_, i) => i !== idx));
+    }
+  };
+
+  const handleUpdatePollOption = (idx: number, value: string) => {
+    setPollOptions(prev => prev.map((opt, i) => i === idx ? value : opt));
+  };
+
+  const handlePollSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pollQuestion.trim()) {
+      alert('Please enter a poll question.');
+      return;
+    }
+    const validOptions = pollOptions.map(o => o.trim()).filter(Boolean);
+    if (validOptions.length < 2) {
+      alert('Please provide at least 2 non-empty voting options.');
+      return;
+    }
+
+    const newPoll: CommunityPoll = {
+      id: `poll-${Date.now()}`,
+      question: pollQuestion.trim(),
+      description: pollDescription.trim() || undefined,
+      category: pollCategory.trim() || 'Community Discussion',
+      author: currentUser,
+      createdAt: 'Just now',
+      status: 'active',
+      totalVotes: 0,
+      options: validOptions.map((text, idx) => ({
+        id: `opt-${idx + 1}-${Date.now()}`,
+        text,
+        votes: 0,
+        voterUserIds: []
+      }))
+    };
+
+    if (onPollAdded) {
+      onPollAdded(newPoll);
+    }
+    handleCloseModal();
+  };
 
   // URL extraction helper
   const extractUrlFromText = (text: string): string | null => {
@@ -721,6 +787,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 {mode === 'vehicle' && (editingVehicle ? 'EDIT VEHICLE' : 'ADD A VEHICLE')}
                 {mode === 'post' && 'ADD A POST'}
                 {mode === 'advertisement' && 'CREATE SHOPIFY ADVERTISEMENT'}
+                {mode === 'poll' && 'CREATE COMMUNITY POLL'}
               </h2>
             </div>
 
@@ -834,6 +901,34 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                       </div>
                       <p className="text-xs text-[#888888] font-mono mt-0.5">
                         Shopify Apparel & Collection Drop
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </button>
+              )}
+              {/* Option 5: Create Community Poll (Super Admin only) */}
+              {isHardAdmin(currentUser) && (
+                <button
+                  type="button"
+                  onClick={() => setMode('poll')}
+                  className="group w-full flex items-center justify-between p-3.5 sm:p-5 bg-[#282828] hover:bg-[#303030] border border-[#ff4d6a]/40 hover:border-[#C8102E] transition-all cursor-pointer text-left shadow-xs"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#ff4d6a] group-hover:text-white transition-colors">
+                      <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
+                          Create Community Poll
+                        </span>
+                        <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
+                          ADMIN
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#888888] font-mono mt-0.5">
+                        Ask questions & gather live voting results from members
                       </p>
                     </div>
                   </div>
@@ -1911,6 +2006,148 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Publish Sponsored Drop</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* ========================================================
+            MODE: CREATE COMMUNITY POLL (Super Admin Only)
+           ======================================================== */}
+        {mode === 'poll' && (
+          <form onSubmit={handlePollSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              <div className="p-3 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-[#ff4d6a] shrink-0" />
+                <div className="text-xs font-mono">
+                  <span className="text-white font-bold uppercase">Super Admin Access: </span>
+                  <span className="text-[#aaaaaa]">Create an interactive community poll. Community members can cast live votes with real-time percentage graphs.</span>
+                </div>
+              </div>
+
+              {/* Poll Question */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                  Poll Question *
+                </label>
+                <input
+                  type="text"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  placeholder="e.g. Which engine platform should we build for our next track project?"
+                  className="w-full px-3 py-2.5 bg-[#1a1a1c] border border-[#444444] text-white text-xs sm:text-sm font-mono focus:outline-none focus:border-[#C8102E]"
+                  required
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                  Poll Category
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['Engine Tech & Track', 'Track & Setup', 'Community Meets', 'Shop Apparel', 'Build Preferences'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setPollCategory(cat)}
+                      className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer border ${
+                        pollCategory === cat 
+                          ? 'bg-[#C8102E] text-white border-[#C8102E] font-bold' 
+                          : 'bg-[#222225] text-[#888888] border-[#333336] hover:text-white'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={pollCategory}
+                  onChange={(e) => setPollCategory(e.target.value)}
+                  placeholder="e.g. Engine Tech & Track"
+                  className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                  Context / Description (Optional)
+                </label>
+                <textarea
+                  value={pollDescription}
+                  onChange={(e) => setPollDescription(e.target.value)}
+                  placeholder="Provide background context or criteria for voters..."
+                  rows={2}
+                  className="w-full px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E] resize-none"
+                />
+              </div>
+
+              {/* Options */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa]">
+                    Voting Options ({pollOptions.length}/6)
+                  </label>
+                  {pollOptions.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={handleAddPollOption}
+                      className="text-xs font-mono text-[#C8102E] hover:text-[#ff4d6a] transition-colors flex items-center gap-1 cursor-pointer font-bold"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Option</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {pollOptions.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="w-7 text-center text-xs font-mono text-[#888888] shrink-0">
+                        #{idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => handleUpdatePollOption(idx, e.target.value)}
+                        placeholder={`Option ${idx + 1}...`}
+                        className="flex-1 px-3 py-2 bg-[#1a1a1c] border border-[#444444] text-white text-xs font-mono focus:outline-none focus:border-[#C8102E]"
+                        required={idx < 2}
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePollOption(idx)}
+                          className="p-2 text-[#777777] hover:text-[#ff4d4d] transition-colors cursor-pointer shrink-0"
+                          title="Remove option"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions Bar */}
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-[#383838] bg-[#222224] shrink-0">
+              <button
+                type="button"
+                onClick={() => setMode('select')}
+                className="px-3 py-2 bg-[#2d2d30] hover:bg-[#3d3d40] text-white text-xs font-mono uppercase tracking-wider cursor-pointer"
+              >
+                Back
+              </button>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer shadow-md"
+              >
+                <Vote className="w-4 h-4" />
+                <span>Publish Community Poll</span>
               </button>
             </div>
           </form>

@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { Vehicle, ActivityItem, ActivityType, Owner, GarageEvent, CommunityPost, PostComment, isHardAdmin } from '../../types/garage';
+import { 
+  Vehicle, ActivityItem, ActivityType, Owner, GarageEvent, 
+  CommunityPost, PostComment, isHardAdmin, SpotlightConfig, CommunityPoll 
+} from '../../types/garage';
 import { 
   Wrench, BookOpen, Clock, 
   Search, ChevronRight, Calendar, MessageSquare, MapPin, 
   Check, Play, ExternalLink, Globe, Youtube, Image as ImageIcon, X, Maximize2,
-  Pencil, Trash2, Car, Upload, Plus, ShieldCheck, Layers, ShoppingBag, Tag
+  Pencil, Trash2, Car, Upload, Plus, ShieldCheck, Layers, ShoppingBag, Tag,
+  Star, BarChart3, Vote
 } from 'lucide-react';
 import { ReactionButtons } from './ReactionButtons';
 import { ThreadedComments } from './ThreadedComments';
+import { CommunityPollCard } from '../cards/CommunityPollCard';
 
 interface ActivityFeedProps {
   vehicles: Vehicle[];
@@ -33,6 +38,13 @@ interface ActivityFeedProps {
   onOpenAddVehicle?: () => void;
   onExploreEvents?: () => void;
   onExploreBuilds?: () => void;
+  spotlightConfig?: SpotlightConfig;
+  onOpenSpotlightModal?: () => void;
+  polls?: CommunityPoll[];
+  onVotePoll?: (pollId: string, optionId: string) => void;
+  onTogglePollStatus?: (pollId: string) => void;
+  onDeletePoll?: (pollId: string) => void;
+  onOpenAddPoll?: () => void;
 }
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = ({
@@ -56,6 +68,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onDeleteComment,
   limit,
   compact = false,
+  spotlightConfig,
+  onOpenSpotlightModal,
+  polls = [],
+  onVotePoll,
+  onTogglePollStatus,
+  onDeletePoll,
+  onOpenAddPoll,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
@@ -360,9 +379,27 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       });
     });
 
+    // 3. Community Polls
+    (polls || []).forEach((poll, pIndex) => {
+      const { timestamp } = parseDateToTimestamp(poll.createdAt, pIndex * 2);
+      list.push({
+        id: `act-poll-${poll.id}`,
+        type: 'poll',
+        dateStr: poll.createdAt || 'Active Poll',
+        timestamp: timestamp || Date.now(),
+        owner: poll.author,
+        title: poll.question,
+        description: poll.description || '',
+        badge: 'COMMUNITY POLL',
+        postCategory: poll.category || 'Community Polls',
+        pollData: poll,
+        likesCount: poll.totalVotes,
+      });
+    });
+
     // Sort strictly chronological descending
     return list.sort((a, b) => b.timestamp - a.timestamp);
-  }, [vehicles, events, posts]);
+  }, [vehicles, events, posts, polls]);
 
   // Dynamic Locations list for Live Feed
   const availableLocations = useMemo(() => {
@@ -379,6 +416,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       'All Categories',
       'Sponsored Drops',
       'Community Posts',
+      'Community Polls',
       'Build Updates',
       'Event News'
     ];
@@ -400,6 +438,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       if (selectedCategory !== 'All Categories') {
         if (selectedCategory === 'Sponsored Drops' && !act.isAdvertisement && act.postCategory !== 'Sponsored Drop') return false;
         if (selectedCategory === 'Community Posts' && (act.type !== 'post' || act.isAdvertisement)) return false;
+        if (selectedCategory === 'Community Polls' && act.type !== 'poll') return false;
         if (selectedCategory === 'Build Updates' && act.type !== 'build_update' && act.type !== 'modification') return false;
         if (selectedCategory === 'Event News' && act.type !== 'event') return false;
       }
@@ -420,7 +459,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
           act.owner.name.toLowerCase().includes(q) ||
           act.owner.handle.toLowerCase().includes(q) ||
           (act.badge && act.badge.toLowerCase().includes(q)) ||
-          (act.shopifyProduct && act.shopifyProduct.title.toLowerCase().includes(q));
+          (act.shopifyProduct && act.shopifyProduct.title.toLowerCase().includes(q)) ||
+          (act.pollData && act.pollData.options.some(opt => opt.text.toLowerCase().includes(q)));
         if (!matches) return false;
       }
 
@@ -434,10 +474,15 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     return result;
   }, [activities, selectedCategory, selectedLocation, searchQuery, limit]);
 
-  // Spotlight vehicle for desktop sidebar
+  // Spotlight vehicle for desktop sidebar (Controlled by Admin spotlightConfig)
   const spotlightVehicle = useMemo(() => {
+    if (spotlightConfig && spotlightConfig.active === false) return null;
+    if (spotlightConfig?.vehicleId) {
+      const match = vehicles.find(v => v.id === spotlightConfig.vehicleId);
+      if (match) return match;
+    }
     return vehicles.find(v => v.featured) || vehicles[0];
-  }, [vehicles]);
+  }, [vehicles, spotlightConfig]);
 
   // Upcoming events for desktop sidebar
   const upcomingEvents = useMemo(() => {
@@ -576,6 +621,21 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
               ? itemComments.length 
               : (act.type === 'post' ? (posts.find(p => p.id === act.postId)?.commentsCount || 0) : 0);
             const isCommentsExpanded = expandedCommentItemIds.has(itemKey);
+
+            if (act.type === 'poll' && act.pollData) {
+              return (
+                <div key={act.id} className="animate-fade-in">
+                  <CommunityPollCard
+                    poll={act.pollData}
+                    currentUser={currentUser}
+                    onVote={onVotePoll || (() => {})}
+                    onToggleStatus={onTogglePollStatus}
+                    onDeletePoll={onDeletePoll}
+                  />
+                </div>
+              );
+            }
+
             const isAdvertisement = Boolean(act.isAdvertisement || act.shopifyProduct);
 
             if (isAdvertisement) {
@@ -1256,17 +1316,27 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             </div>
           )}
 
-          {/* 2. Featured Community Spotlight Build */}
+          {/* 2. Featured Community Spotlight Build (Admin Controlled) */}
           {spotlightVehicle && (
             <div className="bg-[#242424] border border-[#3d3d3d] overflow-hidden shadow-sm">
-              <div className="px-4 py-2.5 bg-[#202020] border-b border-[#333333] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-[#C8102E]" />
-                  <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">
-                    COMMUNITY SPOTLIGHT
+              <div className="px-4 py-2.5 bg-[#202020] border-b border-[#333333] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Star className="w-3.5 h-3.5 text-[#C8102E] shrink-0 fill-[#C8102E]" />
+                  <span className="text-xs font-mono uppercase tracking-wider text-white font-bold truncate">
+                    {spotlightConfig?.badge || 'COMMUNITY SPOTLIGHT'}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-[#888888] uppercase">FEATURED</span>
+                {isHardAdmin(currentUser) && onOpenSpotlightModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenSpotlightModal}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-[#2a2a2d] hover:bg-[#C8102E] text-[#dddddd] hover:text-white border border-[#444446] hover:border-[#C8102E] text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer group/spot shrink-0"
+                    title="Admin: Full control over Community Spotlight"
+                  >
+                    <Star className="w-2.5 h-2.5 text-[#C8102E] group-hover/spot:text-white" />
+                    <span>Manage</span>
+                  </button>
+                )}
               </div>
 
               <div 
@@ -1279,8 +1349,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   referrerPolicy="no-referrer"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
                 <div className="absolute bottom-2.5 left-3 right-3 text-white">
+                  {spotlightConfig?.headline && (
+                    <span className="text-[10px] font-mono text-[#ff4d6a] uppercase tracking-wider font-bold block truncate">
+                      {spotlightConfig.headline}
+                    </span>
+                  )}
                   <h4 className="font-['Oswald'] text-base font-bold uppercase tracking-wide group-hover:text-[#C8102E] transition-colors truncate">
                     {spotlightVehicle.year} {spotlightVehicle.make} {spotlightVehicle.model}
                   </h4>
@@ -1292,7 +1367,20 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 </div>
               </div>
 
-              <div className="p-3 bg-[#1e1e1e] flex items-center justify-between text-xs font-mono">
+              {/* Admin Editorial Commentary Note */}
+              {spotlightConfig?.reason && (
+                <div className="px-3.5 py-2.5 bg-[#171719] border-t border-[#303032]">
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-[#C8102E] uppercase font-bold mb-0.5">
+                    <ShieldCheck className="w-2.5 h-2.5" />
+                    <span>Curator's Note</span>
+                  </div>
+                  <p className="text-[11px] font-mono text-[#aaaaaa] italic leading-relaxed">
+                    "{spotlightConfig.reason}"
+                  </p>
+                </div>
+              )}
+
+              <div className="p-3 bg-[#1e1e1e] border-t border-[#2e2e30] flex items-center justify-between text-xs font-mono">
                 <span className="text-[#888888] truncate">By {spotlightVehicle.owner.name}</span>
                 <button
                   type="button"
@@ -1302,6 +1390,38 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   View Build →
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* 3. Community Poll Sidebar Widget */}
+          {polls && polls.length > 0 && (
+            <div className="bg-[#242424] border border-[#3d3d3d] overflow-hidden shadow-sm">
+              <div className="px-4 py-2.5 bg-[#202020] border-b border-[#333333] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-[#C8102E]" />
+                  <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                    COMMUNITY POLL
+                  </span>
+                </div>
+                {isHardAdmin(currentUser) && onOpenAddPoll && (
+                  <button
+                    type="button"
+                    onClick={onOpenAddPoll}
+                    className="text-[10px] font-mono uppercase text-[#C8102E] hover:text-white transition-colors cursor-pointer flex items-center gap-0.5 font-bold"
+                    title="Admin: Create a new poll"
+                  >
+                    <Plus className="w-2.5 h-2.5" /> New Poll
+                  </button>
+                )}
+              </div>
+              <CommunityPollCard
+                poll={polls[0]}
+                currentUser={currentUser}
+                onVote={onVotePoll || (() => {})}
+                onToggleStatus={onTogglePollStatus}
+                onDeletePoll={onDeletePoll}
+                isSidebarWidget={true}
+              />
             </div>
           )}
 

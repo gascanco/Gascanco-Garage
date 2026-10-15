@@ -4,8 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Vehicle, ActiveView, Owner, GarageEvent, CommunityPost, BuildUpdate, PostComment } from './types/garage';
-import { INITIAL_VEHICLES, CURRENT_MOCK_USER, INITIAL_EVENTS, INITIAL_POSTS, INITIAL_COMMENTS } from './data/mockGarageData';
+import { 
+  Vehicle, ActiveView, Owner, GarageEvent, CommunityPost, 
+  BuildUpdate, PostComment, SpotlightConfig, CommunityPoll 
+} from './types/garage';
+import { 
+  INITIAL_VEHICLES, CURRENT_MOCK_USER, INITIAL_EVENTS, 
+  INITIAL_POSTS, INITIAL_COMMENTS, INITIAL_SPOTLIGHT_CONFIG, INITIAL_POLLS 
+} from './data/mockGarageData';
 import { MobileBottomNav } from './components/navigation/MobileBottomNav';
 import { DiscoverView } from './components/views/DiscoverView';
 import { ActivityFeed } from './components/common/ActivityFeed';
@@ -14,6 +20,7 @@ import { MyGarageView } from './components/views/MyGarageView';
 import { SavedBuildsView } from './components/views/SavedBuildsView';
 import { EventsView } from './components/views/EventsView';
 import { AddVehicleModal } from './components/views/AddVehicleModal';
+import { SpotlightManagerModal } from './components/modals/SpotlightManagerModal';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -22,13 +29,18 @@ export default function App() {
   const [events, setEvents] = useState<GarageEvent[]>(INITIAL_EVENTS);
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>(INITIAL_POSTS);
   const [comments, setComments] = useState<PostComment[]>(INITIAL_COMMENTS);
+  // Community Spotlight Admin Configuration
+  const [spotlightConfig, setSpotlightConfig] = useState<SpotlightConfig>(INITIAL_SPOTLIGHT_CONFIG);
+  const [isSpotlightModalOpen, setIsSpotlightModalOpen] = useState(false);
+  // Community Polls State
+  const [polls, setPolls] = useState<CommunityPoll[]>(INITIAL_POLLS);
   // Primary Home Page is the Live Activity Feed
   const [activeView, setActiveView] = useState<ActiveView>({ type: 'activity-feed' });
   const [likedVehicleIds, setLikedVehicleIds] = useState<Set<string>>(new Set(['veh-skyline-r34', 'veh-ford-f100']));
   const [dislikedVehicleIds, setDislikedVehicleIds] = useState<Set<string>>(new Set());
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const [addModalInitialMode, setAddModalInitialMode] = useState<'select' | 'event' | 'vehicle' | 'post'>('select');
+  const [addModalInitialMode, setAddModalInitialMode] = useState<'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll'>('select');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const handleOpenAddVehicle = () => {
@@ -238,6 +250,97 @@ export default function App() {
     showToast("Vehicle removed from your Garage registry");
   };
 
+  // Spotlight Handlers (Full Super Admin Control)
+  const handleSaveSpotlightConfig = (updated: SpotlightConfig) => {
+    setSpotlightConfig(updated);
+    setVehicles(prev => prev.map(v => ({
+      ...v,
+      featured: v.id === updated.vehicleId ? updated.active : (v.id === spotlightConfig.vehicleId ? false : v.featured)
+    })));
+    showToast(`Updated Community Spotlight: ${updated.badge}! ★`);
+  };
+
+  const handleSetVehicleAsSpotlight = (vehicleId: string) => {
+    const target = vehicles.find(v => v.id === vehicleId);
+    if (!target) return;
+    setSpotlightConfig(prev => ({
+      ...prev,
+      vehicleId,
+      active: true,
+      headline: `${target.year} ${target.make} ${target.model}`,
+      updatedAt: new Date().toISOString(),
+    }));
+    setVehicles(prev => prev.map(v => ({
+      ...v,
+      featured: v.id === vehicleId ? true : (v.id === spotlightConfig.vehicleId ? false : v.featured)
+    })));
+    showToast(`Set ${target.year} ${target.make} ${target.model} as Community Spotlight! ★`);
+  };
+
+  // Poll Handlers (Super Admin Creation & Community Voting)
+  const handleVotePoll = (pollId: string, optionId: string) => {
+    setPolls(prev => prev.map(poll => {
+      if (poll.id !== pollId) return poll;
+
+      const previousVoteId = poll.userVotedOptionId || poll.options.find(o => o.voterUserIds?.includes(currentUser.id))?.id;
+
+      const updatedOptions = poll.options.map(opt => {
+        let votes = opt.votes || 0;
+        let voters = [...(opt.voterUserIds || [])];
+
+        // Remove previous vote if any
+        if (previousVoteId && opt.id === previousVoteId) {
+          votes = Math.max(0, votes - 1);
+          voters = voters.filter(uid => uid !== currentUser.id);
+        }
+
+        // Add new vote
+        if (opt.id === optionId) {
+          votes += 1;
+          if (!voters.includes(currentUser.id)) voters.push(currentUser.id);
+        }
+
+        return {
+          ...opt,
+          votes,
+          voterUserIds: voters,
+        };
+      });
+
+      const totalVotes = updatedOptions.reduce((acc, cur) => acc + cur.votes, 0);
+
+      return {
+        ...poll,
+        options: updatedOptions,
+        totalVotes,
+        userVotedOptionId: optionId,
+      };
+    }));
+    showToast("Vote recorded! 🗳️");
+  };
+
+  const handleCreatePoll = (newPoll: CommunityPoll) => {
+    setPolls(prev => [newPoll, ...prev]);
+    showToast("Community Poll published to Live Feed! 📊");
+    setActiveView({ type: 'activity-feed' });
+  };
+
+  const handleTogglePollStatus = (pollId: string) => {
+    setPolls(prev => prev.map(p => {
+      if (p.id === pollId) {
+        const nextStatus = p.status === 'closed' ? 'active' : 'closed';
+        showToast(nextStatus === 'closed' ? "Poll closed to new votes" : "Poll reopened");
+        return { ...p, status: nextStatus };
+      }
+      return p;
+    }));
+  };
+
+  const handleDeletePoll = (pollId: string) => {
+    setPolls(prev => prev.filter(p => p.id !== pollId));
+    showToast("Poll deleted from community");
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0e0e10] text-white">
       {/* Main View Router */}
@@ -267,6 +370,17 @@ export default function App() {
               onOpenAddVehicle={handleOpenAddVehicle}
               onExploreEvents={() => setActiveView({ type: 'events' })}
               onExploreBuilds={() => setActiveView({ type: 'community-builds' })}
+              spotlightConfig={spotlightConfig}
+              onOpenSpotlightModal={() => setIsSpotlightModalOpen(true)}
+              polls={polls}
+              onVotePoll={handleVotePoll}
+              onTogglePollStatus={handleTogglePollStatus}
+              onDeletePoll={handleDeletePoll}
+              onOpenAddPoll={() => {
+                setEditingVehicle(null);
+                setAddModalInitialMode('poll');
+                setIsAddVehicleOpen(true);
+              }}
             />
           </div>
         )}
@@ -282,6 +396,8 @@ export default function App() {
             likedVehicleIds={likedVehicleIds}
             dislikedVehicleIds={dislikedVehicleIds}
             onOpenAddVehicle={() => setIsAddVehicleOpen(true)}
+            spotlightConfig={spotlightConfig}
+            onOpenSpotlightModal={() => setIsSpotlightModalOpen(true)}
           />
         )}
 
@@ -311,6 +427,8 @@ export default function App() {
               onAddComment={handleAddComment}
               onUpdateComment={handleUpdateComment}
               onDeleteComment={handleDeleteComment}
+              onSetAsSpotlight={handleSetVehicleAsSpotlight}
+              isCurrentSpotlight={spotlightConfig.active && spotlightConfig.vehicleId === vehicle.id}
             />
           );
         })()}
@@ -378,7 +496,7 @@ export default function App() {
         currentUserId={currentUser.id}
       />
 
-      {/* Add / Create Modal ("Add an Event", "Add a Vehicle", "Add a Build Update", "Add a Post") */}
+      {/* Add / Create Modal ("Add an Event", "Add a Vehicle", "Add a Build Update", "Add a Post", "Create Poll") */}
       <AddVehicleModal
         isOpen={isAddVehicleOpen}
         onClose={() => {
@@ -393,7 +511,17 @@ export default function App() {
         onBuildUpdateAdded={handleBuildUpdateAdded}
         onEventAdded={handleEventAdded}
         onPostAdded={handlePostAdded}
+        onPollAdded={handleCreatePoll}
         initialMode={addModalInitialMode}
+      />
+
+      {/* Admin Spotlight Manager Modal */}
+      <SpotlightManagerModal
+        isOpen={isSpotlightModalOpen}
+        onClose={() => setIsSpotlightModalOpen(false)}
+        allVehicles={vehicles}
+        currentConfig={spotlightConfig}
+        onSaveConfig={handleSaveSpotlightConfig}
       />
 
       {/* Action Toast Feedback - Zero radius */}

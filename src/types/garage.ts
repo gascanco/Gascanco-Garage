@@ -186,6 +186,37 @@ export interface CommunityPost {
     badge?: string;
     ctaText?: string;
   };
+  poll?: CommunityPoll;
+}
+
+export interface SpotlightConfig {
+  vehicleId: string;
+  badge: string;
+  headline?: string;
+  reason?: string;
+  active: boolean;
+  updatedAt: string;
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  voterUserIds?: string[];
+}
+
+export interface CommunityPoll {
+  id: string;
+  question: string;
+  description?: string;
+  options: PollOption[];
+  author: Owner;
+  createdAt: string;
+  expiresAt?: string;
+  status: 'active' | 'closed';
+  category?: string;
+  totalVotes: number;
+  userVotedOptionId?: string;
 }
 
 export interface PostComment {
@@ -202,7 +233,7 @@ export interface PostComment {
   dislikesCount?: number;
 }
 
-export type ActivityType = 'build_update' | 'modification' | 'event' | 'post';
+export type ActivityType = 'build_update' | 'modification' | 'event' | 'post' | 'poll';
 
 export interface ActivityItem {
   id: string;
@@ -226,5 +257,6 @@ export interface ActivityItem {
   postId?: string;
   isAdvertisement?: boolean;
   shopifyProduct?: CommunityPost['shopifyProduct'];
+  pollData?: CommunityPoll;
 }
 

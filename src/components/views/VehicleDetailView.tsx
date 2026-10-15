@@ -4,7 +4,7 @@ import {
   ArrowLeft, Share2, Wrench, Calendar, MapPin, 
   ExternalLink, ChevronLeft, ChevronRight, Check, Sparkles, 
   Layers, MessageSquare, Gauge, Eye, X, PlusCircle, ThumbsDown, Camera,
-  Trash2, ShieldCheck, ShoppingBag, Tag, Users, Award, Plus
+  Trash2, ShieldCheck, ShoppingBag, Tag, Users, Award, Plus, Star
 } from 'lucide-react';
 import { ReactionButtons } from '../common/ReactionButtons';
 import { LoveYouGesture } from '../common/LoveYouGesture';
@@ -29,6 +29,8 @@ interface VehicleDetailViewProps {
   onAddComment?: (comment: Omit<PostComment, 'id' | 'createdAt'>) => void;
   onUpdateComment?: (commentId: string, content: string, photoUrl?: string) => void;
   onDeleteComment?: (commentId: string) => void;
+  onSetAsSpotlight?: (vehicleId: string) => void;
+  isCurrentSpotlight?: boolean;
 }
 
 export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
@@ -50,6 +52,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   onAddComment,
   onUpdateComment,
   onDeleteComment,
+  onSetAsSpotlight,
+  isCurrentSpotlight = false,
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -214,17 +218,36 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     <div className="min-h-screen pb-24 bg-[#303030] text-[#eaeaea]">
       {/* Header with bold Year Make & Model directly above photo */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <button
-            onClick={onBack}
-            className="p-1 -ml-1 text-[#8c97aa] hover:text-white transition-colors cursor-pointer"
-            title="Back to Garage Discovery"
-          >
-            <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7" />
-          </button>
-          <h1 className="font-['Oswald'] text-3xl sm:text-5xl lg:text-6xl font-black uppercase text-white tracking-tight leading-none">
-            {vehicle.year} {vehicle.make} {vehicle.model}
-          </h1>
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="p-1 -ml-1 text-[#8c97aa] hover:text-white transition-colors cursor-pointer"
+              title="Back to Garage Discovery"
+            >
+              <ArrowLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+            </button>
+            <h1 className="font-['Oswald'] text-3xl sm:text-5xl lg:text-6xl font-black uppercase text-white tracking-tight leading-none">
+              {vehicle.year} {vehicle.make} {vehicle.model}
+            </h1>
+          </div>
+
+          {/* Super Admin: Community Spotlight Control Button */}
+          {isHardAdmin(currentUser) && onSetAsSpotlight && (
+            <button
+              type="button"
+              onClick={() => onSetAsSpotlight(vehicle.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer border ${
+                isCurrentSpotlight
+                  ? 'bg-[#C8102E] text-white border-[#C8102E] font-bold shadow-sm'
+                  : 'bg-[#222225] hover:bg-[#C8102E] text-[#dddddd] hover:text-white border-[#38383a] hover:border-[#C8102E]'
+              }`}
+              title="Super Admin: Toggle this build as the Community Spotlight"
+            >
+              <Star className={`w-3.5 h-3.5 ${isCurrentSpotlight ? 'fill-white text-white' : 'text-[#ffd700]'}`} />
+              <span>{isCurrentSpotlight ? '★ Active Spotlight' : 'Set as Community Spotlight'}</span>
+            </button>
+          )}
         </div>
 
         {/* Multi-Photo Gallery Showcase */}

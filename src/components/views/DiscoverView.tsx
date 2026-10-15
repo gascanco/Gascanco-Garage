@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Vehicle } from '../../types/garage';
+import { Vehicle, SpotlightConfig } from '../../types/garage';
 import { VehicleCard } from '../cards/VehicleCard';
-import { Search, X, Compass, Plus, MapPin, Layers } from 'lucide-react';
+import { Search, X, Compass, Plus, MapPin, Layers, Star } from 'lucide-react';
 
 interface DiscoverViewProps {
   vehicles: Vehicle[];
@@ -12,6 +12,8 @@ interface DiscoverViewProps {
   likedVehicleIds: Set<string>;
   dislikedVehicleIds?: Set<string>;
   onOpenAddVehicle: () => void;
+  spotlightConfig?: SpotlightConfig;
+  onOpenSpotlightModal?: () => void;
 }
 
 export const DiscoverView: React.FC<DiscoverViewProps> = ({
@@ -23,16 +25,23 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   likedVehicleIds,
   dislikedVehicleIds = new Set(),
   onOpenAddVehicle,
+  spotlightConfig,
+  onOpenSpotlightModal,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Spotlight build (remains full length at top - strictly one)
+  // Spotlight build (remains full length at top - strictly one, controlled by Admin spotlightConfig)
   const spotlightVehicle = useMemo(() => {
+    if (spotlightConfig && spotlightConfig.active === false) return null;
+    if (spotlightConfig?.vehicleId) {
+      const match = vehicles.find(v => v.id === spotlightConfig.vehicleId);
+      if (match) return match;
+    }
     return vehicles.find(v => v.featured) || vehicles[0];
-  }, [vehicles]);
+  }, [vehicles, spotlightConfig]);
 
   // Dynamic Categories list
   const availableCategories = useMemo(() => {
