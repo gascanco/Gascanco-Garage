@@ -890,18 +890,13 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#ff4d6a] group-hover:text-white transition-colors">
                       <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
-                          Create Advertisement
-                        </span>
-                        <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
-                          ADMIN
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#888888] font-mono mt-0.5">
-                        Shopify Apparel & Collection Drop
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
+                        Create Advertisement
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
+                        ADMIN
+                      </span>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
@@ -918,18 +913,13 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#ff4d6a] group-hover:text-white transition-colors">
                       <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
-                          Create Community Poll
-                        </span>
-                        <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
-                          ADMIN
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#888888] font-mono mt-0.5">
-                        Ask questions & gather live voting results from members
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
+                        Create Community Poll
+                      </span>
+                      <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
+                        ADMIN
+                      </span>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
@@ -1056,9 +1046,6 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                         <span className="w-1.5 h-1.5 bg-[#C8102E]" />
                         Event Cover Image *
                       </label>
-                      <p className="text-[11px] text-[#888888] font-mono mt-0.5">
-                        Choose to upload your own photo or use Gemini AI to create one
-                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono text-[#aaaaaa] px-2 py-0.5 bg-[#1e1e1e] border border-[#3d3d3d]">
@@ -1775,12 +1762,9 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         {mode === 'advertisement' && (
           <form onSubmit={handleAdvertisementSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="p-3 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-[#ff4d6a] shrink-0" />
-                <div className="text-xs font-mono">
-                  <span className="text-white font-bold uppercase">Super Admin Access: </span>
-                  <span className="text-[#aaaaaa]">This sponsored card will be published directly to the Live feed linked to your Shopify apparel store.</span>
-                </div>
+              <div className="p-2.5 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#ff4d6a] shrink-0" />
+                <span className="text-xs font-mono text-white font-bold uppercase tracking-wider">Super Admin Access</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
@@ -2017,12 +2001,9 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         {mode === 'poll' && (
           <form onSubmit={handlePollSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
-              <div className="p-3 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-[#ff4d6a] shrink-0" />
-                <div className="text-xs font-mono">
-                  <span className="text-white font-bold uppercase">Super Admin Access: </span>
-                  <span className="text-[#aaaaaa]">Create an interactive community poll. Community members can cast live votes with real-time percentage graphs.</span>
-                </div>
+              <div className="p-2.5 bg-[#1e1e20] border border-[#ff4d6a]/40 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#ff4d6a] shrink-0" />
+                <span className="text-xs font-mono text-white font-bold uppercase tracking-wider">Super Admin Access</span>
               </div>
 
               {/* Poll Question */}
@@ -2313,15 +2294,6 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                         className="w-full bg-[#1c1c1c] border border-[#444444] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
                       />
                     </div>
-
-                    <div className="p-3.5 bg-[#1a1a1a] border border-[#383838] text-xs font-mono text-[#888888] space-y-1">
-                      <span className="text-[#C8102E] font-bold block uppercase tracking-wider">
-                        GARAGE REGISTRY TIP
-                      </span>
-                      <p className="text-[11px] leading-relaxed text-[#aaaaaa]">
-                        Vehicles added here are featured in your personal Garage and discoverable in community builds.
-                      </p>
-                    </div>
                   </div>
                 </div>
               )}
@@ -2415,9 +2387,6 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                       <label className="block text-xs font-mono uppercase tracking-wider text-white font-bold">
                         Photos
                       </label>
-                      <p className="text-[11px] font-mono text-[#888888] mt-0.5">
-                        Upload up to 5 photos. Select which one is primary.
-                      </p>
                     </div>
                     <span className="text-xs font-mono text-[#aaaaaa] bg-[#1a1a1a] px-2.5 py-1 border border-[#3d3d3d]">
                       {vehiclePhotos.length} / 5

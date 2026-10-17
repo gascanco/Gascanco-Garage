@@ -70,5 +70,20 @@ body {
   background: #5a5a5a;
 }
 
+/* Global button micro-interactions and tactile feedback */
+button, [role="button"] {
+  transition-property: color, background-color, border-color, transform, opacity, filter, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:active:not(:disabled), [role="button"]:active {
+  transform: scale(0.97);
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
 
 

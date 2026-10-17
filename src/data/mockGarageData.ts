@@ -143,7 +143,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-1',
         name: 'Apex Speedworks',
         role: 'Twin-Turbo & Dyno Calibration',
-        handle: '@apex_speedworks',
+        handle: 'apex_speedworks',
         type: 'shop',
         verified: true
       },
@@ -151,7 +151,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-2',
         name: 'Craftsman Race Works',
         role: 'Chassis & Custom Roll Cage',
-        handle: '@craftsman_raceworks',
+        handle: 'craftsman_raceworks',
         type: 'crew',
         verified: true
       },
@@ -167,7 +167,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-4',
         name: 'Midnight Shutter Co.',
         role: 'Lead Track Photographer',
-        handle: '@midnight_shutter',
+        handle: 'midnight_shutter',
         type: 'crew'
       }
     ]
@@ -440,7 +440,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-f1-1',
         name: 'Iron & Rust Fab Lab',
         role: 'Chassis Chop & Custom Z-Frame',
-        handle: '@ironandrust_fab',
+        handle: 'ironandrust_fab',
         type: 'crew',
         verified: true
       },
@@ -448,7 +448,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-f1-2',
         name: 'Vintage V8 Speed Supply',
         role: '428 FE Big Block Assembly & Dyno',
-        handle: '@vintage_v8_supply',
+        handle: 'vintage_v8_supply',
         type: 'shop',
         verified: true
       },
@@ -456,7 +456,7 @@ export const INITIAL_VEHICLES: Vehicle[] = [
         id: 'crew-f1-3',
         name: 'Pinstriping by Bones',
         role: 'Hand-Laid 1-Shot Enamel Artwork',
-        handle: '@bones_pinstripe',
+        handle: 'bones_pinstripe',
         type: 'crew'
       }
     ]

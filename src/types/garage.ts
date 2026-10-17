@@ -108,6 +108,7 @@ export interface Vehicle {
   updatedAt: string;
   visibility: 'public' | 'private';
   buildStatus: string;
+  story?: string;
 }
 
 export interface GarageFilter {
@@ -122,6 +123,7 @@ export type ActiveView =
   | { type: 'activity-feed' }
   | { type: 'community-builds' }
   | { type: 'events' }
+  | { type: 'event-detail'; eventId: string }
   | { type: 'saved-builds' }
   | { type: 'discover' }
   | { type: 'vehicle-detail'; vehicleId: string }
@@ -149,6 +151,11 @@ export interface GarageEvent {
   organizer: Owner;
   attendeesCount: number;
   isAttending?: boolean;
+  rsvpStatus?: 'going' | 'interested' | 'none';
+  attendees?: Owner[];
+  routeNotes?: string;
+  schedule?: { time: string; activity: string }[];
+  rules?: string[];
   createdAt: string;
   updates?: EventUpdate[];
 }

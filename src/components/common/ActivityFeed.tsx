@@ -45,6 +45,7 @@ interface ActivityFeedProps {
   onTogglePollStatus?: (pollId: string) => void;
   onDeletePoll?: (pollId: string) => void;
   onOpenAddPoll?: () => void;
+  onSelectEvent?: (eventId: string) => void;
 }
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = ({
@@ -75,6 +76,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onTogglePollStatus,
   onDeletePoll,
   onOpenAddPoll,
+  onExploreEvents,
+  onSelectEvent,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
@@ -82,6 +85,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
   const [playingYoutubeId, setPlayingYoutubeId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(10);
 
   // Threaded Comments Expanded State
   const [expandedCommentItemIds, setExpandedCommentItemIds] = useState<Set<string>>(new Set());
@@ -397,8 +401,51 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       });
     });
 
-    // Sort strictly chronological descending
-    return list.sort((a, b) => b.timestamp - a.timestamp);
+    // 4. Vehicle Registrations & Detailed Build Updates (Ensuring up to 100 rich current cards)
+    vehicles.forEach((veh, vIndex) => {
+      const { timestamp, display } = parseDateToTimestamp(veh.createdAt, vIndex * 3 + 2);
+      list.push({
+        id: `act-veh-${veh.id}`,
+        type: 'build_update',
+        dateStr: veh.createdAt || display,
+        timestamp,
+        vehicleId: veh.id,
+        vehicleName: `${veh.year} ${veh.make} ${veh.model}`,
+        owner: veh.owner,
+        title: `${veh.year} ${veh.make} ${veh.model}${veh.nickname ? ` "${veh.nickname}"` : ''}`,
+        description: veh.story || `${veh.engine} · ${veh.transmission} · ${veh.color} · ${veh.drivetrain}. Registered in GasCanCo Garage.`,
+        badge: veh.category || 'Garage Registry',
+        photoUrl: veh.primaryImage,
+        images: veh.galleryImages,
+        likesCount: veh.likesCount,
+        postCategory: 'Build Updates',
+      });
+
+      if (veh.buildUpdates && veh.buildUpdates.length > 0) {
+        veh.buildUpdates.forEach((upd, uIndex) => {
+          const { timestamp: updTs, display: updDisp } = parseDateToTimestamp(upd.date, uIndex * 2 + 1);
+          list.push({
+            id: `act-upd-${upd.id}`,
+            type: 'build_update',
+            dateStr: upd.date || updDisp,
+            timestamp: updTs,
+            vehicleId: veh.id,
+            vehicleName: `${veh.year} ${veh.make} ${veh.model}`,
+            owner: veh.owner,
+            title: upd.title,
+            description: upd.content,
+            badge: 'Build Update',
+            photoUrl: (upd.images && upd.images.length > 0) ? upd.images[0] : veh.primaryImage,
+            images: upd.images,
+            likesCount: upd.likesCount || 0,
+            postCategory: 'Build Updates',
+          });
+        });
+      }
+    });
+
+    // Sort strictly chronological descending and cap at 100 of the most current cards in total
+    return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
   }, [vehicles, events, posts, polls]);
 
   // Dynamic Locations list for Live Feed
@@ -602,14 +649,16 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
           </div>
         )}
 
-        {/* Activity Timeline List */}
+        {/* Activity Timeline List (Up to 100 current cards with View More) */}
         <div className="space-y-4">
         {filteredActivities.length > 0 ? (
-          filteredActivities.map((act) => {
-            const isEvent = act.type === 'event';
-            const isPost = act.type === 'post';
-            const vehicleId = act.vehicleId || act.id;
-            const itemKey = act.postId || act.id;
+          (() => {
+            const displayedActivities = filteredActivities.slice(0, visibleCount);
+            return displayedActivities.map((act) => {
+              const isEvent = act.type === 'event';
+              const isPost = act.type === 'post';
+              const vehicleId = act.vehicleId || act.id;
+              const itemKey = act.postId || act.id;
             const itemComments = comments.filter(c => 
               c.postId === itemKey || 
               (act.postId && c.postId === act.postId) || 
@@ -755,18 +804,25 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             return (
               <article
                 key={act.id}
-                onClick={() => act.vehicleId ? onSelectVehicle(act.vehicleId) : undefined}
+                onClick={() => act.vehicleId ? onSelectVehicle(act.vehicleId) : (act.type === 'event' && act.eventData ? (onSelectEvent ? onSelectEvent(act.eventData.id) : onExploreEvents?.()) : undefined)}
                 className="group relative bg-[#242424] border border-[#383838] hover:border-[#C8102E] transition-all duration-200 shadow-sm overflow-hidden"
               >
                 {/* 1. Clean Top Header: Author + Clean Date on left, Vehicle / Tag on right */}
                 <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 border-b border-[#2d2d2d] bg-[#202020]">
                   {/* Left: Author Avatar (Larger: w-12 h-12 sm:w-14 sm:h-14) & Name & Date */}
-                  <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectOwner?.(act.owner.id);
+                    }}
+                    className="flex items-center gap-3 sm:gap-3.5 min-w-0 cursor-pointer group/author"
+                    title={`View ${act.owner.name}'s garage`}
+                  >
                     <img
                       src={act.owner.avatar}
                       alt={act.owner.name}
                       referrerPolicy="no-referrer"
-                      className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 object-cover border-2 border-[#C8102E] shadow-sm"
+                      className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 object-cover border-2 border-[#C8102E] shadow-sm group-hover/author:border-white transition-colors"
                     />
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1240,7 +1296,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 )}
               </article>
             );
-          })
+          });
+        })()
         ) : (
           <div className="border border-[#3d3d3d] bg-[#242424] p-10 text-center max-w-md mx-auto my-8">
             <Clock className="w-8 h-8 text-[#888888] mx-auto mb-2" />
@@ -1254,11 +1311,27 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="mt-4 px-3 py-1.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#333333] hover:bg-[#444444] text-white transition-colors"
+                className="mt-4 px-3 py-1.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#333333] hover:bg-[#444444] text-white transition-all duration-150 active:scale-[0.98] cursor-pointer"
               >
                 Clear Search
               </button>
             )}
+          </div>
+        )}
+
+        {/* View More Button - Displays up to 100 current cards */}
+        {filteredActivities.length > 0 && visibleCount < Math.min(100, filteredActivities.length) && (
+          <div className="pt-4 pb-2 flex flex-col items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setVisibleCount(prev => Math.min(100, prev + 10))}
+              className="px-6 py-2.5 bg-[#222225] hover:bg-[#C8102E] text-white border border-[#3e3e42] hover:border-[#C8102E] font-['Oswald'] text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-sm flex items-center gap-2"
+            >
+              <span>View More Cards</span>
+              <span className="text-[11px] font-mono text-[#aaaaaa]">
+                ({Math.min(visibleCount, filteredActivities.length)} of {Math.min(100, filteredActivities.length)})
+              </span>
+            </button>
           </div>
         )}
       </div>
@@ -1440,14 +1513,19 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
               <div className="space-y-3">
                 {upcomingEvents.map(evt => (
-                  <div key={evt.id} className="p-2.5 bg-[#1c1c1c] border border-[#383838] space-y-1.5">
+                  <div 
+                    key={evt.id} 
+                    onClick={() => onSelectEvent ? onSelectEvent(evt.id) : onExploreEvents?.()}
+                    className="p-2.5 bg-[#1c1c1c] border border-[#383838] hover:border-[#C8102E] transition-all duration-150 space-y-1.5 cursor-pointer group/meet"
+                    title={`View details for ${evt.title}`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-mono uppercase font-bold text-[#C8102E] bg-[#C8102E]/10 px-1.5 py-0.5">
                         {evt.eventType}
                       </span>
                       <span className="text-[10px] font-mono text-[#888888]">{evt.attendeesCount} RSVP</span>
                     </div>
-                    <h5 className="font-['Oswald'] text-sm font-bold uppercase text-white truncate">
+                    <h5 className="font-['Oswald'] text-sm font-bold uppercase text-white group-hover/meet:text-[#C8102E] transition-colors truncate">
                       {evt.title}
                     </h5>
                     <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#aaaaaa]">

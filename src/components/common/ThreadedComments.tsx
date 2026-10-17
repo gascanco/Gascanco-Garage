@@ -99,7 +99,9 @@ export const ThreadedComments: React.FC<ThreadedCommentsProps> = ({
     if (e.target) e.target.value = '';
   };
 
-  // Submit Root Comment
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Submit Root Comment - Appends to bottom of conversation
   const handleSubmitRoot = (e: React.FormEvent) => {
     e.preventDefault();
     if (!rootContent.trim() && !rootPhoto) return;
@@ -114,6 +116,9 @@ export const ThreadedComments: React.FC<ThreadedCommentsProps> = ({
 
     setRootContent('');
     setRootPhoto(null);
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 120);
   };
 
   // Start Replying - Clean toggle without @ handle prefill
@@ -242,83 +247,7 @@ export const ThreadedComments: React.FC<ThreadedCommentsProps> = ({
         </div>
       </div>
 
-      {/* Root Composer (Add Top-Level Comment) */}
-      <form onSubmit={handleSubmitRoot} className="space-y-2 bg-[#202020] border border-[#383838] p-3 sm:p-3.5">
-        <div className="flex items-start gap-2.5">
-          <img
-            src={currentUser.avatar}
-            alt={currentUser.name}
-            className="w-8 h-8 object-cover border border-[#444444] shrink-0"
-          />
-          <div className="flex-1 min-w-0 space-y-2">
-            <textarea
-              rows={2}
-              value={rootContent}
-              onChange={(e) => setRootContent(e.target.value)}
-              placeholder="Comment..."
-              className="w-full bg-[#161616] border border-[#3a3a3a] focus:border-[#C8102E] p-2 text-xs sm:text-sm text-white placeholder-[#777777] focus:outline-none resize-none leading-relaxed"
-            />
-
-            {/* Staged Photo */}
-            {rootPhoto && (
-              <div className="relative inline-block border border-[#C8102E]/60 bg-black p-1">
-                <img
-                  src={rootPhoto}
-                  alt="Staged comment upload"
-                  className="w-24 h-16 sm:w-28 sm:h-20 object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => setRootPhoto(null)}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C8102E] hover:bg-black text-white border border-white flex items-center justify-center transition-colors cursor-pointer"
-                  title="Remove photo"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Composer Controls */}
-        <div className="flex items-center justify-between pt-1 border-t border-[#2d2d2d]">
-          <div className="flex items-center gap-2">
-            <input
-              ref={rootFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleRootPhotoUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              disabled={!!rootPhoto}
-              onClick={() => rootFileInputRef.current?.click()}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border transition-colors cursor-pointer ${
-                rootPhoto
-                  ? 'border-[#444444] text-[#666666] cursor-not-allowed bg-[#181818]'
-                  : 'border-[#444444] hover:border-white text-[#aaaaaa] hover:text-white bg-[#1a1a1a]'
-              }`}
-              title={rootPhoto ? 'Photo added' : 'Add photo'}
-            >
-              <Camera className="w-3.5 h-3.5 text-[#C8102E]" />
-              <span className="hidden sm:inline">{rootPhoto ? 'Photo Added' : 'Photo'}</span>
-              <span className="sm:hidden">{rootPhoto ? 'Added' : 'Photo'}</span>
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            disabled={!rootContent.trim() && !rootPhoto}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
-          >
-            <span>Post</span>
-            <Send className="w-3 h-3 shrink-0" />
-          </button>
-        </div>
-      </form>
-
-      {/* Comment Threads List */}
+      {/* Comment Threads List (Chronological oldest to newest, flowing downward) */}
       <div className="space-y-4 pt-1">
         {rootComments.length === 0 ? (
           <div className="border border-[#333333] bg-[#1d1d1d] p-6 text-center text-xs font-mono text-[#888888]">
@@ -626,6 +555,83 @@ export const ThreadedComments: React.FC<ThreadedCommentsProps> = ({
           })
         )}
       </div>
+
+      {/* Root Composer: Positioned at Bottom of Conversation so New Comments Flow to Bottom */}
+      <form onSubmit={handleSubmitRoot} className="space-y-2 bg-[#202020] border border-[#383838] p-3 sm:p-3.5 mt-3 shadow-sm">
+        <div className="flex items-start gap-2.5">
+          <img
+            src={currentUser.avatar}
+            alt={currentUser.name}
+            className="w-8 h-8 object-cover border border-[#444444] shrink-0"
+          />
+          <div className="flex-1 min-w-0 space-y-2">
+            <textarea
+              rows={2}
+              value={rootContent}
+              onChange={(e) => setRootContent(e.target.value)}
+              placeholder="Write a comment or build note..."
+              className="w-full bg-[#161616] border border-[#3a3a3a] focus:border-[#C8102E] p-2 text-xs sm:text-sm text-white placeholder-[#777777] focus:outline-none resize-none leading-relaxed"
+            />
+
+            {/* Staged Photo */}
+            {rootPhoto && (
+              <div className="relative inline-block border border-[#C8102E]/60 bg-black p-1">
+                <img
+                  src={rootPhoto}
+                  alt="Staged comment upload"
+                  className="w-24 h-16 sm:w-28 sm:h-20 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setRootPhoto(null)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C8102E] hover:bg-black text-white border border-white flex items-center justify-center transition-all duration-150 active:scale-[0.98] cursor-pointer"
+                  title="Remove photo"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Composer Controls */}
+        <div className="flex items-center justify-between pt-1 border-t border-[#2d2d2d]">
+          <div className="flex items-center gap-2">
+            <input
+              ref={rootFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleRootPhotoUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={!!rootPhoto}
+              onClick={() => rootFileInputRef.current?.click()}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-mono border transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+                rootPhoto
+                  ? 'border-[#444444] text-[#666666] cursor-not-allowed bg-[#181818]'
+                  : 'border-[#444444] hover:border-white text-[#aaaaaa] hover:text-white bg-[#1a1a1a]'
+              }`}
+              title={rootPhoto ? 'Photo added' : 'Add photo'}
+            >
+              <Camera className="w-3.5 h-3.5 text-[#C8102E]" />
+              <span className="hidden sm:inline">{rootPhoto ? 'Photo Added' : 'Photo'}</span>
+              <span className="sm:hidden">{rootPhoto ? 'Added' : 'Photo'}</span>
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!rootContent.trim() && !rootPhoto}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-xs"
+          >
+            <span>Post</span>
+            <Send className="w-3 h-3 shrink-0" />
+          </button>
+        </div>
+      </form>
+      <div ref={bottomRef} />
 
       {/* ========================================================
           EDIT COMMENT MODAL

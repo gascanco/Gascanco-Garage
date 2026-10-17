@@ -19,6 +19,7 @@ import { VehicleDetailView } from './components/views/VehicleDetailView';
 import { MyGarageView } from './components/views/MyGarageView';
 import { SavedBuildsView } from './components/views/SavedBuildsView';
 import { EventsView } from './components/views/EventsView';
+import { EventDetailView } from './components/views/EventDetailView';
 import { AddVehicleModal } from './components/views/AddVehicleModal';
 import { SpotlightManagerModal } from './components/modals/SpotlightManagerModal';
 import { CheckCircle2 } from 'lucide-react';
@@ -182,7 +183,7 @@ export default function App() {
       createdAt: 'Just now',
       likesCount: 0,
     };
-    setComments(prev => [newComment, ...prev]);
+    setComments(prev => [...prev, newComment]);
 
     // Increment post commentsCount if targeting a post
     setCommunityPosts(prevPosts =>
@@ -222,16 +223,25 @@ export default function App() {
     showToast("Comment deleted");
   };
 
-  // RSVP Event toggle
-  const handleRsvpEvent = (eventId: string) => {
+  // RSVP Event toggle & status handler
+  const handleRsvpEvent = (eventId: string, status?: 'going' | 'interested' | 'none') => {
     setEvents(prev => prev.map(evt => {
       if (evt.id === eventId) {
-        const nextAttending = !evt.isAttending;
-        showToast(nextAttending ? `You're attending ${evt.title}!` : `Removed RSVP for ${evt.title}`);
+        const nextAttending = status ? (status === 'going') : !evt.isAttending;
+        const nextStatus: 'going' | 'interested' | 'none' = status || (nextAttending ? 'going' : 'none');
+        if (nextStatus === 'going') {
+          showToast(`You're attending ${evt.title}!`);
+        } else if (nextStatus === 'interested') {
+          showToast(`Marked interested in ${evt.title}`);
+        } else {
+          showToast(`Removed RSVP for ${evt.title}`);
+        }
+        const delta = nextAttending ? (evt.isAttending ? 0 : 1) : (evt.isAttending ? -1 : 0);
         return {
           ...evt,
           isAttending: nextAttending,
-          attendeesCount: nextAttending ? evt.attendeesCount + 1 : Math.max(1, evt.attendeesCount - 1)
+          rsvpStatus: nextStatus,
+          attendeesCount: Math.max(0, evt.attendeesCount + delta)
         };
       }
       return evt;
@@ -369,6 +379,7 @@ export default function App() {
               onDeleteComment={handleDeleteComment}
               onOpenAddVehicle={handleOpenAddVehicle}
               onExploreEvents={() => setActiveView({ type: 'events' })}
+              onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
               onExploreBuilds={() => setActiveView({ type: 'community-builds' })}
               spotlightConfig={spotlightConfig}
               onOpenSpotlightModal={() => setIsSpotlightModalOpen(true)}
@@ -444,8 +455,29 @@ export default function App() {
               setAddModalInitialMode('event');
               setIsAddVehicleOpen(true);
             }}
+            onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
           />
         )}
+
+        {/* Event Detail View */}
+        {activeView.type === 'event-detail' && (() => {
+          const targetEvent = events.find(e => e.id === activeView.eventId) || events[0];
+          return (
+            <EventDetailView
+              event={targetEvent}
+              currentUser={currentUser}
+              onBack={() => setActiveView({ type: 'events' })}
+              onRsvp={handleRsvpEvent}
+              onSelectOwner={(ownerId) => setActiveView({ type: 'user-profile', ownerId })}
+              comments={comments}
+              onAddComment={handleAddComment}
+              onUpdateComment={handleUpdateComment}
+              onDeleteComment={handleDeleteComment}
+              allEvents={events}
+              onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
+            />
+          );
+        })()}
 
         {/* Saved Builds View */}
         {activeView.type === 'saved-builds' && (
