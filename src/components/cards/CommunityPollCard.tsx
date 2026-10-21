@@ -38,28 +38,28 @@ export const CommunityPollCard: React.FC<CommunityPollCardProps> = ({
       }`}
     >
       {/* 1. Header: Matches Standard Cards in Feed */}
-      <div className={`${isSidebarWidget ? 'mb-2.5' : 'px-4 py-3 sm:py-3.5 border-b border-[#2d2d2d] bg-[#202020]'} flex items-center justify-between gap-3`}>
-        {/* Left: Author Avatar (Matching Standard Cards: w-12 h-12 / w-14 h-14) & Name & Date */}
-        <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+      <div className={`${isSidebarWidget ? 'mb-2.5' : 'px-3.5 py-3 sm:px-4 sm:py-3.5 border-b border-[#2d2d2d] bg-[#202020]'} flex items-center justify-between gap-2.5`}>
+        {/* Left: Author Avatar & Name & Date */}
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
           <img
             src={poll.author.avatar}
             alt={poll.author.name}
             referrerPolicy="no-referrer"
-            className={`${isSidebarWidget ? 'w-8 h-8' : 'w-12 h-12 sm:w-14 sm:h-14'} shrink-0 object-cover border-2 border-[#C8102E] shadow-sm`}
+            className={`${isSidebarWidget ? 'w-8 h-8' : 'w-11 h-11 sm:w-14 sm:h-14'} shrink-0 object-cover border-2 border-[#C8102E] shadow-sm`}
           />
-          <div className="min-w-0 space-y-0.5">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className={`font-['Oswald'] ${isSidebarWidget ? 'text-sm' : 'text-base sm:text-lg'} font-bold text-white uppercase tracking-wider truncate`}>
                 {poll.author.name}
               </span>
               {isHardAdmin(poll.author) && (
-                <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-0.5 shadow-xs">
-                  <ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> ADMIN
+                <span className="px-1.5 py-0.2 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] tracking-wider uppercase inline-flex items-center gap-0.5 shadow-xs shrink-0">
+                  <ShieldCheck className="w-2.5 h-2.5" /> ADMIN
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-[#888888] flex-wrap">
-              {poll.author.location && <span className="text-[#aaaaaa]">{poll.author.location}</span>}
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#888888] whitespace-nowrap overflow-hidden text-ellipsis">
+              {poll.author.location && <span>{poll.author.location}</span>}
               {poll.author.location && <span className="text-[#555555]">•</span>}
               <span>{poll.createdAt}</span>
             </div>
@@ -67,22 +67,22 @@ export const CommunityPollCard: React.FC<CommunityPollCardProps> = ({
         </div>
 
         {/* Right side: Clean Badge & Admin Controls */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="px-2 py-0.5 bg-[#C8102E]/15 border border-[#C8102E]/40 text-[#ff4d6a] font-['Oswald'] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <span className="px-2 py-0.5 bg-[#C8102E]/15 border border-[#C8102E]/40 text-[#ff4d6a] font-['Oswald'] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-1 whitespace-nowrap">
             <BarChart3 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            {poll.category || 'COMMUNITY POLL'}
+            <span className="max-w-[110px] sm:max-w-none truncate">{poll.category || 'POLL'}</span>
           </span>
 
           {isAdmin && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               {onToggleStatus && (
                 <button
                   type="button"
                   onClick={() => onToggleStatus(poll.id)}
-                  className="px-2 py-1 bg-[#26262a] hover:bg-[#333338] text-[#cccccc] hover:text-white text-[10px] font-mono border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
+                  className="p-1 sm:px-2 sm:py-1 bg-[#26262a] hover:bg-[#333338] text-[#cccccc] hover:text-white text-[10px] font-mono border border-white/10 transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center gap-1"
                   title={isClosed ? "Reopen poll" : "Close poll to new votes"}
                 >
-                  {isClosed ? <Unlock className="w-2.5 h-2.5" /> : <Lock className="w-2.5 h-2.5" />}
+                  {isClosed ? <Unlock className="w-3 h-3 text-[#4ade80]" /> : <Lock className="w-3 h-3" />}
                   <span className="hidden sm:inline">{isClosed ? 'Reopen' : 'Close'}</span>
                 </button>
               )}
@@ -94,10 +94,10 @@ export const CommunityPollCard: React.FC<CommunityPollCardProps> = ({
                       onDeletePoll(poll.id);
                     }
                   }}
-                  className="px-2 py-1 bg-[#26262a] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white text-[10px] font-mono border border-white/10 transition-colors cursor-pointer flex items-center gap-1"
+                  className="p-1 sm:px-2 sm:py-1 bg-[#26262a] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white text-[10px] font-mono border border-white/10 transition-all duration-150 active:scale-[0.98] cursor-pointer flex items-center gap-1"
                   title="Admin: Delete Poll"
                 >
-                  <Trash2 className="w-2.5 h-2.5 text-[#ff4d4d] group-hover:text-white" />
+                  <Trash2 className="w-3 h-3 text-[#ff4d4d] group-hover:text-white" />
                 </button>
               )}
             </div>

@@ -705,8 +705,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   <div className="flex flex-col">
                     {/* 1. Header Text: Title with Sponsored on the far right, and Body Text */}
                     <div className="p-4 sm:p-6 pb-3 sm:pb-4 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="font-['Oswald'] text-xl sm:text-2xl font-bold uppercase text-white tracking-wide leading-snug">
+                      <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2.5">
+                        <h3 className="font-['Oswald'] text-xl sm:text-2xl font-bold uppercase text-white tracking-wide leading-snug flex-1 min-w-0 pr-1">
                           {displayTitle}
                         </h3>
                         <div className="flex items-center gap-2 shrink-0">
@@ -718,7 +718,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                                   e.stopPropagation();
                                   handleStartEdit(act);
                                 }}
-                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-colors cursor-pointer"
+                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-all duration-150 active:scale-[0.98] cursor-pointer"
                                 title="Edit advertisement"
                               >
                                 <Pencil className="w-2.5 h-2.5 inline mr-1" /> Edit
@@ -732,14 +732,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                                     onDeletePost?.(targetPostId);
                                   }
                                 }}
-                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-colors cursor-pointer"
+                                className="px-2 py-0.5 bg-black/85 hover:bg-[#C8102E] text-white text-[10px] font-mono border border-white/20 transition-all duration-150 active:scale-[0.98] cursor-pointer"
                                 title="Delete advertisement"
                               >
                                 <Trash2 className="w-2.5 h-2.5 inline mr-1 text-[#ff4d4d]" /> Delete
                               </button>
                             </div>
                           )}
-                          <span className="text-[10px] sm:text-xs font-mono uppercase tracking-widest text-[#ff4d6a] font-bold">
+                          <span className="text-[10px] sm:text-xs font-mono uppercase tracking-widest text-[#ff4d6a] font-bold whitespace-nowrap px-1.5 py-0.5 bg-[#C8102E]/10 border border-[#C8102E]/25">
                             Sponsored
                           </span>
                         </div>
@@ -808,40 +808,40 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 className="group relative bg-[#242424] border border-[#383838] hover:border-[#C8102E] transition-all duration-200 shadow-sm overflow-hidden"
               >
                 {/* 1. Clean Top Header: Author + Clean Date on left, Vehicle / Tag on right */}
-                <div className="px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 border-b border-[#2d2d2d] bg-[#202020]">
-                  {/* Left: Author Avatar (Larger: w-12 h-12 sm:w-14 sm:h-14) & Name & Date */}
+                <div className="px-3.5 py-2.5 sm:px-4 sm:py-3.5 flex items-center justify-between gap-2.5 border-b border-[#2d2d2d] bg-[#202020]">
+                  {/* Left: Author Avatar & Name & Date */}
                   <div 
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectOwner?.(act.owner.id);
                     }}
-                    className="flex items-center gap-3 sm:gap-3.5 min-w-0 cursor-pointer group/author"
+                    className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1 cursor-pointer group/author"
                     title={`View ${act.owner.name}'s garage`}
                   >
                     <img
                       src={act.owner.avatar}
                       alt={act.owner.name}
                       referrerPolicy="no-referrer"
-                      className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 object-cover border-2 border-[#C8102E] shadow-sm group-hover/author:border-white transition-colors"
+                      className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 object-cover border-2 border-[#C8102E] shadow-sm group-hover/author:border-white transition-colors"
                     />
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         <span className="font-['Oswald'] text-base sm:text-lg font-bold text-white uppercase tracking-wider group-hover/author:text-[#C8102E] transition-colors truncate">
                           {act.owner.name}
                         </span>
                         {isHardAdmin(act.owner) && (
-                          <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-0.5 shadow-xs">
-                            <ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> ADMIN
+                          <span className="px-1.5 py-0.2 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] tracking-wider uppercase inline-flex items-center gap-0.5 shadow-xs shrink-0">
+                            <ShieldCheck className="w-2.5 h-2.5" /> ADMIN
                           </span>
                         )}
                         {act.isAdvertisement && (
-                          <span className="px-1.5 py-0.5 bg-[#171719] border border-[#ff4d6a]/40 text-[#ff4d6a] font-['Oswald'] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 bg-[#171719] border border-[#ff4d6a]/40 text-[#ff4d6a] font-['Oswald'] font-bold text-[9px] sm:text-[10px] tracking-wider uppercase inline-flex items-center gap-1 shrink-0">
                             <Tag className="w-2.5 h-2.5" /> SPONSORED
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-[#888888] flex-wrap">
-                        {act.owner.location && <span className="text-[#aaaaaa]">{act.owner.location}</span>}
+                      <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#888888] whitespace-nowrap overflow-hidden text-ellipsis">
+                        {act.owner.location && <span>{act.owner.location}</span>}
                         {act.owner.location && <span className="text-[#555555]">•</span>}
                         <span>{formatCleanDate(act.dateStr)}</span>
                       </div>
@@ -851,18 +851,18 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   {/* Right: Edit / Delete button for author or Super Admin (Gascanco@gmail.com) */}
                   {isPost ? (
                     (act.owner.id === currentUserId || isHardAdmin(currentUser)) ? (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleStartEdit(act);
                           }}
-                          className="flex items-center gap-1.5 px-2 py-1 bg-[#282828] hover:bg-[#C8102E] text-[#dddddd] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer shadow-xs group/edit"
+                          className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 bg-[#282828] hover:bg-[#C8102E] text-[#dddddd] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-xs group/edit"
                           title={isHardAdmin(currentUser) && act.owner.id !== currentUserId ? "Admin: Edit post" : "Edit your post"}
                         >
                           <Pencil className="w-3 h-3 text-[#C8102E] group-hover/edit:text-white transition-colors" />
-                          <span>{isHardAdmin(currentUser) && act.owner.id !== currentUserId ? "Edit" : "Edit"}</span>
+                          <span className="hidden sm:inline">Edit</span>
                         </button>
                         {isHardAdmin(currentUser) && (
                           <button
@@ -874,11 +874,11 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                                 onDeletePost?.(targetPostId);
                               }
                             }}
-                            className="flex items-center gap-1 px-2 py-1 bg-[#282828] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase transition-colors cursor-pointer"
+                            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 bg-[#282828] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase transition-all duration-150 active:scale-[0.98] cursor-pointer"
                             title="Super Admin: Delete post"
                           >
                             <Trash2 className="w-3 h-3 text-[#ff4d4d] hover:text-white" />
-                            <span className="text-[10px]">Delete</span>
+                            <span className="hidden sm:inline text-[10px]">Delete</span>
                           </button>
                         )}
                       </div>

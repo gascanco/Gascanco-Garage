@@ -1,6 +1,6 @@
 {
-  "summary": "Updated implementation plan incorporating user instruction:\n- The Main Navigation bar is to remain at the bottom completely untouched and unaltered.\n- Preserves all other confirmed features: handle removal, button micro-interactions, Live Feed poll harmonization and pagination up to 100 cards, bottom-stacked comments, Vehicle Details narrative story with links and conversation tab, matching manufacturer builds, and Events page overhaul mirroring Builds with upcoming meet countdown spotlight and dedicated Event Details view.",
-  "updatedAt": "2026-10-16T11:06:01.632399903Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Implementation plan for resolving mobile wrapping issues across the app and overhauling the Vehicle Details mobile tab navigation:\n1. Mobile Header & Card Wrapping Fixes: Eliminating orphan bullet points, text clipping on Sponsored badges, cramped author headers in CommunityPollCard and standard posts via responsive icon buttons and flex-wrap stabilization.\n2. Vehicle Details Mobile Tab Navigation: Replacing horizontal scrolling with a sleek full-width 4-button segmented bar (Technical Sheet, About the Build, Photos, Discussions).\n3. 'About the Build' Mobile Section: Moving the Story, Builder Profile, Crew & Sponsors, and More Builds to a dedicated mobile section before Photos, while maintaining the dual-column desktop layout.",
+  "updatedAt":  "2026-10-21T22:59:58.291127643Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }

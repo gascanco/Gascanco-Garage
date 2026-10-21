@@ -55,7 +55,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'specs' | 'photos' | 'discussion'>('specs');
+  const [activeTab, setActiveTab] = useState<'specs' | 'about' | 'photos' | 'discussion'>('specs');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFollowing, setIsFollowing] = useState(vehicle.owner.isFollowing || false);
   const [expandedUpdateComments, setExpandedUpdateComments] = useState<Set<string>>(new Set());
@@ -211,6 +211,275 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     setActiveImageIndex((prev) => (prev - 1 + vehicle.galleryImages.length) % vehicle.galleryImages.length);
   };
 
+  // 1. Story Behind This Build Section
+  const renderStorySection = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#333336]">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5 text-[#C8102E]" />
+          <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+            The Story Behind This Build
+          </h3>
+        </div>
+        {(isOwner || isHardAdmin(currentUser)) && (
+          <button
+            type="button"
+            onClick={() => setIsEditingStory(!isEditingStory)}
+            className="text-xs font-mono text-[#C8102E] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            <span>{isEditingStory ? 'Close Editor' : 'Edit Story'}</span>
+          </button>
+        )}
+      </div>
+
+      {isEditingStory ? (
+        <form onSubmit={handleSaveStory} className="space-y-3 pt-1">
+          <textarea
+            rows={6}
+            value={storyDraft}
+            onChange={(e) => setStoryDraft(e.target.value)}
+            placeholder="Describe your build's history, inspiration, adventures, track days, or paste links (e.g. YouTube dyno pulls, parts logs)..."
+            className="w-full bg-[#18181a] border border-[#444446] p-3 text-sm text-white focus:outline-none focus:border-[#C8102E] font-sans leading-relaxed"
+          />
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditingStory(false)}
+              className="px-3.5 py-1.5 bg-[#2d2d30] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-xs font-['Oswald'] font-bold uppercase tracking-wider text-white cursor-pointer shadow-sm transition-all duration-150 active:scale-[0.98]"
+            >
+              Save Story
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="text-sm sm:text-base text-[#cccccc] leading-relaxed whitespace-pre-line pt-1">
+          {vehicle.story ? (
+            renderStoryWithLinks(vehicle.story)
+          ) : (
+            <p className="italic text-[#888888] font-mono text-xs">
+              No story added yet. {isOwner ? 'Click "Edit Story" to describe your build journey, history, and links!' : ''}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // 2. Specifications Table Section
+  const renderSpecsTable = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-4 shadow-sm">
+      <div className="pb-3 border-b border-[#333336] flex items-center justify-between">
+        <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+          Vehicle Specifications & Factory Architecture
+        </h3>
+        <span className="text-xs font-mono text-[#aaaaaa]">
+          Baseline Specs
+        </span>
+      </div>
+
+      <div className="border border-[#38383a] bg-[#1a1a1c] overflow-hidden">
+        <table className="w-full text-xs sm:text-sm font-mono">
+          <tbody className="divide-y divide-[#2d2d30]">
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase w-5/12 sm:w-1/3">Year / Make / Model</td>
+              <td className="px-4 py-3 text-white font-bold break-words">{vehicle.year} {vehicle.make} {vehicle.model}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Trim Package</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.trim || 'Standard'}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Powertrain / Engine</td>
+              <td className="px-4 py-3 text-white font-medium break-words">{vehicle.engine}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Power Output</td>
+              <td className="px-4 py-3 text-white font-bold break-words">{vehicle.horsepower || 'Not Disclosed'}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Transmission</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.transmission}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Drivetrain Layout</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.drivetrain}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Exterior Colorway</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.color}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Garage Location</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.owner.location}</td>
+            </tr>
+            <tr className="hover:bg-[#202024]">
+              <td className="px-4 py-3 text-[#888888] uppercase">Build Intent</td>
+              <td className="px-4 py-3 text-white break-words">{vehicle.buildStatus}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // 3. Owner Signature Card Section
+  const renderOwnerSection = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-5 space-y-4 shadow-sm">
+      <div 
+        onClick={() => onSelectOwner(vehicle.owner.id)}
+        className="flex items-center gap-4 group cursor-pointer"
+      >
+        <img
+          src={vehicle.owner.avatar}
+          alt={vehicle.owner.name}
+          className="w-16 h-16 sm:w-20 sm:h-20 object-cover border-2 border-[#C8102E] shrink-0 shadow-md"
+        />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h4 className="font-['Oswald'] text-2xl sm:text-3xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-tight truncate">
+              {vehicle.owner.name}
+            </h4>
+            {isHardAdmin(vehicle.owner) && (
+              <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
+                ADMIN
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-mono text-[#aaaaaa] mt-1">
+            {vehicle.owner.location}
+          </p>
+        </div>
+      </div>
+
+      {vehicle.owner.bio && (
+        <p className="text-xs text-[#aaaaaa] leading-relaxed pt-2 border-t border-[#333336]">
+          {vehicle.owner.bio}
+        </p>
+      )}
+
+      <div className="pt-3 border-t border-[#333336] flex items-center justify-between text-xs font-mono text-[#888888]">
+        <span>Member Since {vehicle.owner.memberSince}</span>
+        <span className="text-[#C8102E] font-bold">
+          {isHardAdmin(vehicle.owner) ? 'VERIFIED ADMIN' : 'GASCANCO BUILDER'}
+        </span>
+      </div>
+    </div>
+  );
+
+  // 4. Build Crew & Sponsors Section
+  const renderCrewSection = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-5 space-y-3 shadow-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-mono text-[#C8102E] uppercase tracking-wider block font-bold">
+          BUILD CREW & SPONSORS
+        </span>
+        {canManageShoutouts && (
+          <button
+            type="button"
+            onClick={() => setIsAddShoutoutModalOpen(true)}
+            className="text-xs font-mono text-white hover:text-[#C8102E] flex items-center gap-1 cursor-pointer"
+          >
+            <Plus className="w-3 h-3" />
+            <span>Add</span>
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2.5">
+        {currentCrewAndSponsors.map(item => (
+          <div key={item.id} className="p-2.5 bg-[#1a1a1c] border border-[#333336] flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-['Oswald'] text-sm font-bold uppercase text-white truncate">
+                  {item.name}
+                </span>
+                {item.verified && (
+                  <ShieldCheck className="w-3 h-3 text-[#C8102E] shrink-0" />
+                )}
+                <span className="text-[9px] font-mono uppercase px-1 py-0.2 bg-[#2a2a2e] text-[#bbbbbb] border border-[#38383a]">
+                  {item.type}
+                </span>
+              </div>
+              <span className="text-xs font-mono text-[#C8102E] block truncate">
+                {item.role}
+              </span>
+              {item.url && (
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] font-mono text-[#888888] hover:text-white inline-flex items-center gap-1 mt-0.5"
+                >
+                  <span>Visit partner site</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+            </div>
+
+            {canManageShoutouts && (
+              <button
+                type="button"
+                onClick={() => handleDeleteShoutout(item.id)}
+                className="text-[#666666] hover:text-[#ff4d4d] p-1 cursor-pointer transition-colors"
+                title="Remove shoutout"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // 5. More Builds From Same Manufacturer Section
+  const renderMoreBuildsSection = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-5 space-y-3 shadow-sm">
+      <span className="text-xs font-mono text-[#C8102E] uppercase tracking-wider block font-bold">
+        MORE {vehicle.make.toUpperCase()} BUILDS
+      </span>
+
+      {matchingManufacturerBuilds.length > 0 ? (
+        <div className="space-y-2.5">
+          {matchingManufacturerBuilds.map(rel => (
+            <div
+              key={rel.id}
+              onClick={() => onSelectRelated(rel.id)}
+              className="p-2.5 bg-[#1a1a1c] border border-[#333336] hover:border-[#C8102E] transition-colors cursor-pointer group flex items-center gap-3"
+            >
+              <img
+                src={rel.primaryImage}
+                alt=""
+                className="w-14 h-12 object-cover border border-[#444446] shrink-0"
+              />
+              <div className="min-w-0">
+                <span className="font-['Oswald'] text-sm font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors truncate block">
+                  {rel.year} {rel.make} {rel.model}
+                </span>
+                <span className="text-xs font-mono text-[#888888] block truncate">
+                  {rel.owner.location}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-3 bg-[#1a1a1c] border border-[#333336] text-center">
+          <p className="text-xs font-mono text-[#888888]">
+            No other registered {vehicle.make} builds in the registry yet.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen pb-24 bg-[#303030] text-[#eaeaea]">
       {/* Header with bold Year Make & Model directly above photo */}
@@ -312,14 +581,118 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         </div>
       </section>
 
-      {/* Tabs Navigation Bar: Technical Sheet | Photos | Discussions */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="border-b border-[#38383a] flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-4 sm:gap-8 font-['Oswald'] text-sm sm:text-base font-bold uppercase tracking-wider shrink-0">
+      {/* Mobile Action Bar: Edit & Share */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:hidden">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-mono text-[#888888] uppercase tracking-wider">
+            Vehicle Profile
+          </div>
+          <div className="flex items-center gap-2">
+            {(isOwner || isHardAdmin(currentUser)) && (
+              <button
+                type="button"
+                onClick={() => onEditVehicle(vehicle.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#333333] hover:bg-[#3d3d3d] text-xs font-['Oswald'] font-bold uppercase tracking-wider text-white border border-[#444444] transition-all duration-150 active:scale-[0.98] cursor-pointer"
+              >
+                <Wrench className="w-3.5 h-3.5 text-[#C8102E]" />
+                <span>{isOwner ? 'Edit Build' : 'Admin Edit'}</span>
+              </button>
+            )}
+
             <button
+              type="button"
+              onClick={handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1c1c1c] hover:bg-[#2d2d2d] text-xs font-mono text-[#bbbbbb] hover:text-white border border-[#3d3d3d] transition-all duration-150 active:scale-[0.98] cursor-pointer"
+            >
+              {copiedLink ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                  <span className="text-[#10b981]">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-[#C8102E]" />
+                  <span>Share</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs Navigation Bar: Mobile 4-Button Grid (Zero scrollbar, all visible at once) & Desktop Tabs */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-3 sm:mt-6">
+        {/* Mobile Full-Width 4-Button Grid */}
+        <div className="grid grid-cols-4 gap-1 p-1 bg-[#1a1a1c] border border-[#38383a] sm:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveTab('specs')}
+            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+              activeTab === 'specs'
+                ? 'bg-[#C8102E] text-white shadow font-bold'
+                : 'bg-[#222225] text-[#9ba5b7] hover:text-white hover:bg-[#28282c]'
+            }`}
+          >
+            <Gauge className="w-4 h-4 mb-0.5 shrink-0" />
+            <span className="text-[11px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Specs
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('about')}
+            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+              activeTab === 'about'
+                ? 'bg-[#C8102E] text-white shadow font-bold'
+                : 'bg-[#222225] text-[#9ba5b7] hover:text-white hover:bg-[#28282c]'
+            }`}
+          >
+            <BookOpen className="w-4 h-4 mb-0.5 shrink-0" />
+            <span className="text-[11px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              About
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('photos')}
+            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+              activeTab === 'photos'
+                ? 'bg-[#C8102E] text-white shadow font-bold'
+                : 'bg-[#222225] text-[#9ba5b7] hover:text-white hover:bg-[#28282c]'
+            }`}
+          >
+            <Camera className="w-4 h-4 mb-0.5 shrink-0" />
+            <span className="text-[11px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Photos ({vehicle.galleryImages.length})
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('discussion')}
+            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+              activeTab === 'discussion'
+                ? 'bg-[#C8102E] text-white shadow font-bold'
+                : 'bg-[#222225] text-[#9ba5b7] hover:text-white hover:bg-[#28282c]'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 mb-0.5 shrink-0" />
+            <span className="text-[11px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Chat ({vehicleComments.length})
+            </span>
+          </button>
+        </div>
+
+        {/* Desktop Tab Bar */}
+        <div className="hidden sm:flex items-center justify-between border-b border-[#38383a]">
+          <div className="flex items-center gap-6 sm:gap-8 font-['Oswald'] text-sm sm:text-base font-bold uppercase tracking-wider">
+            <button
+              type="button"
               onClick={() => setActiveTab('specs')}
               className={`py-3 sm:py-3.5 border-b-2 transition-colors relative cursor-pointer flex items-center gap-2 shrink-0 ${
-                activeTab === 'specs'
+                activeTab === 'specs' || activeTab === 'about'
                   ? 'border-[#C8102E] text-[#C8102E]'
                   : 'border-transparent text-[#8d98ab] hover:text-white'
               }`}
@@ -329,6 +702,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('photos')}
               className={`py-3 sm:py-3.5 border-b-2 transition-colors relative cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'photos'
@@ -341,6 +715,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('discussion')}
               className={`py-3 sm:py-3.5 border-b-2 transition-colors relative cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'discussion'
@@ -356,6 +731,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             {(isOwner || isHardAdmin(currentUser)) && (
               <button
+                type="button"
                 onClick={() => onEditVehicle(vehicle.id)}
                 className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#333333] hover:bg-[#3d3d3d] text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider text-white border border-[#444444] transition-all duration-150 active:scale-[0.98] cursor-pointer shrink-0"
               >
@@ -365,6 +741,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             )}
 
             <button
+              type="button"
               onClick={handleShare}
               className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#1c1c1c] hover:bg-[#2d2d2d] text-xs sm:text-sm font-mono text-[#bbbbbb] hover:text-white border border-[#3d3d3d] transition-all duration-150 active:scale-[0.98] cursor-pointer shrink-0"
             >
@@ -390,126 +767,40 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           {/* Main Column */}
           <div className="lg:col-span-8 space-y-6 min-w-0">
             
-            {/* TAB 1: TECHNICAL SHEET & STORY */}
+            {/* TAB: SPECS / TECHNICAL SHEET */}
             {activeTab === 'specs' && (
               <div className="space-y-6">
-                {/* 1. Long Text Body: The Story Behind This Build */}
-                <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#333336]">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-[#C8102E]" />
-                      <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
-                        The Story Behind This Build
-                      </h3>
-                    </div>
-                    {(isOwner || isHardAdmin(currentUser)) && (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingStory(!isEditingStory)}
-                        className="text-xs font-mono text-[#C8102E] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>{isEditingStory ? 'Close Editor' : 'Edit Story'}</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {isEditingStory ? (
-                    <form onSubmit={handleSaveStory} className="space-y-3 pt-1">
-                      <textarea
-                        rows={6}
-                        value={storyDraft}
-                        onChange={(e) => setStoryDraft(e.target.value)}
-                        placeholder="Describe your build's history, inspiration, adventures, track days, or paste links (e.g. YouTube dyno pulls, parts logs)..."
-                        className="w-full bg-[#18181a] border border-[#444446] p-3 text-sm text-white focus:outline-none focus:border-[#C8102E] font-sans leading-relaxed"
-                      />
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingStory(false)}
-                          className="px-3.5 py-1.5 bg-[#2d2d30] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-xs font-['Oswald'] font-bold uppercase tracking-wider text-white cursor-pointer shadow-sm transition-all duration-150 active:scale-[0.98]"
-                        >
-                          Save Story
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="text-sm sm:text-base text-[#cccccc] leading-relaxed whitespace-pre-line pt-1">
-                      {vehicle.story ? (
-                        renderStoryWithLinks(vehicle.story)
-                      ) : (
-                        <p className="italic text-[#888888] font-mono text-xs">
-                          No story added yet. {isOwner ? 'Click "Edit Story" to describe your build journey, history, and links!' : ''}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                {/* On desktop, keep Story in Technical Sheet. On mobile, Story is inside 'About the Build' */}
+                <div className="hidden lg:block">
+                  {renderStorySection()}
                 </div>
+                {renderSpecsTable()}
+              </div>
+            )}
 
-                {/* 2. Specifications Table */}
-                <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-4 shadow-sm">
-                  <div className="pb-3 border-b border-[#333336] flex items-center justify-between">
-                    <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
-                      Vehicle Specifications & Factory Architecture
-                    </h3>
-                    <span className="text-xs font-mono text-[#aaaaaa]">
-                      Baseline Specs
-                    </span>
-                  </div>
-
-                  <div className="border border-[#38383a] bg-[#1a1a1c] overflow-hidden">
-                    <table className="w-full text-xs sm:text-sm font-mono">
-                      <tbody className="divide-y divide-[#2d2d30]">
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase w-5/12 sm:w-1/3">Year / Make / Model</td>
-                          <td className="px-4 py-3 text-white font-bold">{vehicle.year} {vehicle.make} {vehicle.model}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Trim Package</td>
-                          <td className="px-4 py-3 text-white">{vehicle.trim || 'Standard'}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Powertrain / Engine</td>
-                          <td className="px-4 py-3 text-white font-medium">{vehicle.engine}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Power Output</td>
-                          <td className="px-4 py-3 text-white font-bold">{vehicle.horsepower || 'Not Disclosed'}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Transmission</td>
-                          <td className="px-4 py-3 text-white">{vehicle.transmission}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Drivetrain Layout</td>
-                          <td className="px-4 py-3 text-white">{vehicle.drivetrain}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Exterior Colorway</td>
-                          <td className="px-4 py-3 text-white">{vehicle.color}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Garage Location</td>
-                          <td className="px-4 py-3 text-white">{vehicle.owner.location}</td>
-                        </tr>
-                        <tr className="hover:bg-[#202024]">
-                          <td className="px-4 py-3 text-[#888888] uppercase">Build Intent</td>
-                          <td className="px-4 py-3 text-white">{vehicle.buildStatus}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+            {/* TAB: ABOUT THE BUILD (Dedicated mobile page before photos) */}
+            {activeTab === 'about' && (
+              <div className="space-y-6">
+                <div className="sm:hidden pb-1 border-b border-[#38383a]">
+                  <h2 className="font-['Oswald'] text-2xl font-bold uppercase tracking-wide text-white">
+                    About the Build
+                  </h2>
+                </div>
+                <div className="space-y-6 lg:hidden">
+                  {renderOwnerSection()}
+                  {renderCrewSection()}
+                  {renderStorySection()}
+                  {renderMoreBuildsSection()}
+                </div>
+                {/* On desktop if about active, show Specs table */}
+                <div className="hidden lg:block space-y-6">
+                  {renderStorySection()}
+                  {renderSpecsTable()}
                 </div>
               </div>
             )}
 
-            {/* TAB 2: PHOTOS GALLERY */}
+            {/* TAB: PHOTOS GALLERY */}
             {activeTab === 'photos' && (
               <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between pb-3 border-b border-[#333336]">
@@ -552,7 +843,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               </div>
             )}
 
-            {/* TAB 3: DISCUSSIONS (Full Threaded Conversation Thread) */}
+            {/* TAB: DISCUSSIONS (Full Threaded Conversation Thread) */}
             {activeTab === 'discussion' && (
               <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
                 <div>
@@ -582,152 +873,11 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             )}
           </div>
 
-          {/* Sidebar Column */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* Owner Signature Card (Without "Built By", Larger Profile & Typography) */}
-            <div className="bg-[#242426] border border-[#38383a] p-5 space-y-4 shadow-sm">
-              <div 
-                onClick={() => onSelectOwner(vehicle.owner.id)}
-                className="flex items-center gap-4 group cursor-pointer"
-              >
-                <img
-                  src={vehicle.owner.avatar}
-                  alt={vehicle.owner.name}
-                  className="w-16 h-16 sm:w-20 sm:h-20 object-cover border-2 border-[#C8102E] shrink-0 shadow-md"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h4 className="font-['Oswald'] text-2xl sm:text-3xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-tight truncate">
-                      {vehicle.owner.name}
-                    </h4>
-                    {isHardAdmin(vehicle.owner) && (
-                      <span className="px-1.5 py-0.5 bg-[#C8102E] text-white font-['Oswald'] font-black text-[9px] uppercase tracking-wider">
-                        ADMIN
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm font-mono text-[#aaaaaa] mt-1">
-                    {vehicle.owner.location}
-                  </p>
-                </div>
-              </div>
-
-              {vehicle.owner.bio && (
-                <p className="text-xs text-[#aaaaaa] leading-relaxed pt-2 border-t border-[#333336]">
-                  {vehicle.owner.bio}
-                </p>
-              )}
-
-              <div className="pt-3 border-t border-[#333336] flex items-center justify-between text-xs font-mono text-[#888888]">
-                <span>Member Since {vehicle.owner.memberSince}</span>
-                <span className="text-[#C8102E] font-bold">
-                  {isHardAdmin(vehicle.owner) ? 'VERIFIED ADMIN' : 'GASCANCO BUILDER'}
-                </span>
-              </div>
-            </div>
-
-            {/* Build Crew & Sponsors List */}
-            <div className="bg-[#242426] border border-[#38383a] p-5 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-[#C8102E] uppercase tracking-wider block font-bold">
-                  BUILD CREW & SPONSORS
-                </span>
-                {canManageShoutouts && (
-                  <button
-                    type="button"
-                    onClick={() => setIsAddShoutoutModalOpen(true)}
-                    className="text-xs font-mono text-white hover:text-[#C8102E] flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Add</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2.5">
-                {currentCrewAndSponsors.map(item => (
-                  <div key={item.id} className="p-2.5 bg-[#1a1a1c] border border-[#333336] flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-['Oswald'] text-sm font-bold uppercase text-white truncate">
-                          {item.name}
-                        </span>
-                        {item.verified && (
-                          <ShieldCheck className="w-3 h-3 text-[#C8102E] shrink-0" />
-                        )}
-                        <span className="text-[9px] font-mono uppercase px-1 py-0.2 bg-[#2a2a2e] text-[#bbbbbb] border border-[#38383a]">
-                          {item.type}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono text-[#C8102E] block truncate">
-                        {item.role}
-                      </span>
-                      {item.url && (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] font-mono text-[#888888] hover:text-white inline-flex items-center gap-1 mt-0.5"
-                        >
-                          <span>Visit partner site</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      )}
-                    </div>
-
-                    {canManageShoutouts && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteShoutout(item.id)}
-                        className="text-[#666666] hover:text-[#ff4d4d] p-1 cursor-pointer transition-colors"
-                        title="Remove shoutout"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Related Builds from Same Manufacturer (Strict Make Matching) */}
-            <div className="bg-[#242426] border border-[#38383a] p-5 space-y-3 shadow-sm">
-              <span className="text-xs font-mono text-[#C8102E] uppercase tracking-wider block font-bold">
-                MORE {vehicle.make.toUpperCase()} BUILDS
-              </span>
-
-              {matchingManufacturerBuilds.length > 0 ? (
-                <div className="space-y-2.5">
-                  {matchingManufacturerBuilds.map(rel => (
-                    <div
-                      key={rel.id}
-                      onClick={() => onSelectRelated(rel.id)}
-                      className="p-2.5 bg-[#1a1a1c] border border-[#333336] hover:border-[#C8102E] transition-colors cursor-pointer group flex items-center gap-3"
-                    >
-                      <img
-                        src={rel.primaryImage}
-                        alt=""
-                        className="w-14 h-12 object-cover border border-[#444446] shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <span className="font-['Oswald'] text-sm font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors truncate block">
-                          {rel.year} {rel.make} {rel.model}
-                        </span>
-                        <span className="text-xs font-mono text-[#888888] block truncate">
-                          {rel.owner.location}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-3 bg-[#1a1a1c] border border-[#333336] text-center">
-                  <p className="text-xs font-mono text-[#888888]">
-                    No other registered {vehicle.make} builds in the registry yet.
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* Desktop Sidebar Column - Hidden on mobile because it is moved to 'About the Build' tab */}
+          <div className="hidden lg:block lg:col-span-4 space-y-6">
+            {renderOwnerSection()}
+            {renderCrewSection()}
+            {renderMoreBuildsSection()}
           </div>
         </div>
       </div>
