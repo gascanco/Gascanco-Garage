@@ -5,6 +5,7 @@ import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
 import { 
   Plus, Wrench, MapPin, Edit3, Calendar, X, Check, Share2, ShieldCheck
 } from 'lucide-react';
+import { formatMemberSince, normalizeCityState, POPULAR_US_CITIES } from '../../utils/dateAndLocationUtils';
 
 interface MyGarageViewProps {
   currentUser: Owner;
@@ -74,12 +75,13 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
     e.preventDefault();
     if (!onUpdateCurrentUser) return;
     const fullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim() || currentUser.name;
+    const normalizedLocation = normalizeCityState(editLocation.trim()) || currentUser.location;
     const updated: Owner = {
       ...currentUser,
       name: fullName,
       handle: fullName,
       bio: editBio.trim(),
-      location: editLocation.trim() || currentUser.location,
+      location: normalizedLocation,
       avatar: editAvatar.trim() || currentUser.avatar,
       coverPhoto: editCoverPhoto.trim() || currentUser.coverPhoto,
     };
@@ -148,7 +150,7 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
                     </span>
                     <span className="flex items-center gap-1.5 text-[#888888]">
                       <Calendar className="w-4 h-4" />
-                      <span>Member since {currentUser.memberSince}</span>
+                      <span>Member since {formatMemberSince(currentUser.memberSince)}</span>
                     </span>
                   </div>
                 </div>
@@ -251,13 +253,20 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
                       <input
                         type="text"
                         required
+                        list="popular-us-cities"
                         value={editLocation}
                         onChange={(e) => setEditLocation(e.target.value)}
-                        placeholder="City, State"
+                        onBlur={() => setEditLocation(prev => normalizeCityState(prev))}
+                        placeholder="e.g. Costa Mesa, CA"
                         className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C8102E]"
                       />
+                      <datalist id="popular-us-cities">
+                        {POPULAR_US_CITIES.map((c) => (
+                          <option key={c} value={c} />
+                        ))}
+                      </datalist>
                       <p className="text-[10px] text-[#777777] font-mono mt-1">
-                        You can change or generalize this anytime for privacy.
+                        Sourced as City, State (e.g. Costa Mesa, CA) to ensure clean database indexing.
                       </p>
                     </div>
 

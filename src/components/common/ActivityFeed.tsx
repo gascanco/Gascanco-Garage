@@ -13,6 +13,7 @@ import {
 import { ReactionButtons } from './ReactionButtons';
 import { ThreadedComments } from './ThreadedComments';
 import { CommunityPollCard } from '../cards/CommunityPollCard';
+import { formatTimeAgo } from '../../utils/dateAndLocationUtils';
 
 interface ActivityFeedProps {
   vehicles: Vehicle[];
@@ -258,25 +259,28 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     setEditingPost(null);
   };
 
-  // Helper to parse human dates into sortable timestamps
+  // Helper to parse dates into sortable timestamps with realistic live relative times
   const parseDateToTimestamp = (dateStr?: string, fallbackOffset = 0): { timestamp: number; display: string } => {
-    if (!dateStr) {
-      const now = new Date('2024-10-01').getTime() - fallbackOffset * 86400000;
+    if (!dateStr || dateStr.toLowerCase().includes('just now') || dateStr.toLowerCase().includes('recently')) {
+      const now = Date.now() - fallbackOffset * 60000;
       return { timestamp: now, display: 'Recently' };
     }
 
     const parsed = Date.parse(dateStr);
     if (!isNaN(parsed)) {
-      return { timestamp: parsed, display: dateStr };
+      const diffMs = Date.now() - parsed;
+      // If within recent real-time (last 7 days), preserve it
+      if (diffMs > 0 && diffMs < 7 * 86400000) {
+        return { timestamp: parsed, display: dateStr };
+      }
+      // Stagger seed data realistically: 2m ago, 18m ago, 45m ago, 2h ago, 5h ago...
+      const staggerMinutes = fallbackOffset === 0 ? 2 : (fallbackOffset * 18 + 5);
+      const staggered = Date.now() - staggerMinutes * 60000;
+      return { timestamp: staggered, display: dateStr };
     }
 
-    // Try parsing strings like "October 2024", "May 2024", "August 2023"
-    const monthYear = Date.parse(`1 ${dateStr}`);
-    if (!isNaN(monthYear)) {
-      return { timestamp: monthYear - fallbackOffset * 3600000, display: dateStr };
-    }
-
-    return { timestamp: Date.now() - fallbackOffset * 86400000, display: dateStr };
+    const staggerMinutes = fallbackOffset === 0 ? 2 : (fallbackOffset * 18 + 5);
+    return { timestamp: Date.now() - staggerMinutes * 60000, display: dateStr };
   };
 
   // Helper to format human dates cleanly without noisy long strings
@@ -404,17 +408,19 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     // 4. Vehicle Registrations & Detailed Build Updates (Ensuring up to 100 rich current cards)
     vehicles.forEach((veh, vIndex) => {
       const { timestamp, display } = parseDateToTimestamp(veh.createdAt, vIndex * 3 + 2);
+      const ownerFirstName = (veh.owner.name || '').trim().split(' ')[0] || 'User';
+      const vehTitle = `${veh.year} ${veh.make} ${veh.model}`.trim();
       list.push({
         id: `act-veh-${veh.id}`,
         type: 'build_update',
         dateStr: veh.createdAt || display,
         timestamp,
         vehicleId: veh.id,
-        vehicleName: `${veh.year} ${veh.make} ${veh.model}`,
+        vehicleName: vehTitle,
         owner: veh.owner,
-        title: `${veh.year} ${veh.make} ${veh.model}${veh.nickname ? ` "${veh.nickname}"` : ''}`,
-        description: veh.story || `${veh.engine} · ${veh.transmission} · ${veh.color} · ${veh.drivetrain}. Registered in GasCanCo Garage.`,
-        badge: veh.category || 'Garage Registry',
+        title: vehTitle,
+        description: `${ownerFirstName} just added a ${vehTitle} to their garage.`,
+        badge: '',
         photoUrl: veh.primaryImage,
         images: veh.galleryImages,
         likesCount: veh.likesCount,
@@ -657,6 +663,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             return displayedActivities.map((act) => {
               const isEvent = act.type === 'event';
               const isPost = act.type === 'post';
+              const isRegistration = act.id.startsWith('act-veh-');
               const vehicleId = act.vehicleId || act.id;
               const itemKey = act.postId || act.id;
             const itemComments = comments.filter(c => 
@@ -843,13 +850,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                       <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#888888] whitespace-nowrap overflow-hidden text-ellipsis">
                         {act.owner.location && <span>{act.owner.location}</span>}
                         {act.owner.location && <span className="text-[#555555]">•</span>}
-                        <span>{formatCleanDate(act.dateStr)}</span>
+                        <span>{formatTimeAgo(act.timestamp || act.dateStr)}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Right: Edit / Delete button for author or Super Admin (Gascanco@gmail.com) */}
-                  {isPost ? (
+                  {isRegistration ? null : isPost ? (
                     (act.owner.id === currentUserId || isHardAdmin(currentUser)) ? (
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -1059,10 +1066,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                       </div>
                     )}
 
-                    {/* Single Photo fallback if no multi-gallery and not already covered by link preview - Extends FULL WIDTH */}
+                    {/* Single Photo fallback if no multi-gallery and not already covered by link preview - Extends FULL WIDTH (Uncropped) */}
                     {act.images && act.images.length === 1 && !act.linkPreview && (
                       <div 
-                        className="w-full relative aspect-video sm:aspect-[21/9] bg-black border-t border-[#333333] overflow-hidden cursor-pointer group/photo"
+                        className="w-full relative max-h-[560px] bg-[#141416] border-t border-[#333333] flex items-center justify-center overflow-hidden cursor-pointer group/photo"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveLightboxImage(act.images![0]);
@@ -1071,18 +1078,18 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         <img
                           src={act.images[0]}
                           alt="Post photo"
-                          className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-500"
+                          className="w-full h-auto max-h-[560px] object-contain group-hover/photo:scale-[1.02] transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
                           <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
                         </div>
                       </div>
                     )}
 
-                    {/* Single Photo fallback from photoUrl if images array was empty - Extends FULL WIDTH */}
+                    {/* Single Photo fallback from photoUrl if images array was empty - Extends FULL WIDTH (Uncropped) */}
                     {(!act.images || act.images.length === 0) && act.photoUrl && !act.linkPreview && (
                       <div 
-                        className="w-full relative aspect-video sm:aspect-[21/9] bg-black border-t border-[#333333] overflow-hidden cursor-pointer group/photo"
+                        className="w-full relative max-h-[560px] bg-[#141416] border-t border-[#333333] flex items-center justify-center overflow-hidden cursor-pointer group/photo"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveLightboxImage(act.photoUrl!);
@@ -1091,16 +1098,16 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         <img
                           src={act.photoUrl}
                           alt="Post photo"
-                          className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-500"
+                          className="w-full h-auto max-h-[560px] object-contain group-hover/photo:scale-[1.02] transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
                           <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
                         </div>
                       </div>
                     )}
                   </div>
                 ) : isEvent ? (
-                  /* Dedicated Event Layout: Details First, Preview Image Extends FULL WIDTH of Card (Clickable) */
+                  /* Dedicated Event Layout: Details First, Preview Image Extends FULL WIDTH of Card (Clickable & Uncropped) */
                   <div className="flex flex-col">
                     <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 space-y-2">
                       <h3 className="font-['Oswald'] text-lg sm:text-xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-snug">
@@ -1127,10 +1134,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                       )}
                     </div>
 
-                    {/* Event Preview Image - Full Width of Card & Clickable for Full Resolution */}
+                    {/* Event Preview Image - Full Width of Card & Clickable for Full Resolution (Uncropped) */}
                     {act.photoUrl && (
                       <div 
-                        className="w-full relative aspect-[16/9] overflow-hidden bg-[#181818] border-t border-[#333333] cursor-pointer group/photo"
+                        className="w-full relative max-h-[560px] overflow-hidden bg-[#141416] border-t border-[#333333] flex items-center justify-center cursor-pointer group/photo"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveLightboxImage(act.photoUrl!);
@@ -1141,9 +1148,43 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                           src={act.photoUrl}
                           alt={act.title}
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-500"
+                          className="w-full h-auto max-h-[560px] object-contain group-hover/photo:scale-[1.02] transition-transform duration-500"
                         />
-                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100">
+                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
+                          <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : isRegistration ? (
+                  /* Clean Automatic Registration Card - No specs, no duplicate category/titles, full uncropped photo */
+                  <div className="flex flex-col">
+                    <div className="p-4 sm:p-5 pb-3 sm:pb-3.5">
+                      <p className="text-base sm:text-lg md:text-xl font-['Oswald'] font-bold text-white uppercase tracking-wide leading-snug">
+                        <span className="text-[#C8102E]">{(act.owner.name || '').trim().split(' ')[0]}</span> just added a <span className="text-white">{act.vehicleName || act.title}</span> to their garage.
+                      </p>
+                    </div>
+
+                    {act.photoUrl && (
+                      <div
+                        className="w-full relative max-h-[560px] bg-[#141416] border-t border-[#333336] flex items-center justify-center overflow-hidden cursor-pointer group/photo"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (act.vehicleId) {
+                            onSelectVehicle(act.vehicleId);
+                          } else {
+                            setActiveLightboxImage(act.photoUrl!);
+                          }
+                        }}
+                        title={`View ${act.vehicleName || 'vehicle'}`}
+                      >
+                        <img
+                          src={act.photoUrl}
+                          alt={act.vehicleName || act.title}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-auto max-h-[560px] object-contain group-hover/photo:scale-[1.02] transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
                           <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
                         </div>
                       </div>
@@ -1154,7 +1195,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   <div className="p-4 sm:p-5">
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                       {/* Text Details */}
-                      <div className={`${act.photoUrl ? 'md:col-span-8' : 'md:col-span-12'} space-y-2`}>
+                      <div className={`${act.photoUrl ? 'md:col-span-7' : 'md:col-span-12'} space-y-2`}>
                         <h3 className="font-['Oswald'] text-lg sm:text-xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-snug">
                           {act.title}
                         </h3>
@@ -1167,10 +1208,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         )}
                       </div>
 
-                      {/* Image - Clickable for Full Res */}
+                      {/* Image - Clickable for Full Res (Uncropped) */}
                       {act.photoUrl && (
                         <div 
-                          className="md:col-span-4 relative aspect-[16/10] overflow-hidden bg-[#181818] border border-[#383838] cursor-pointer group/photo"
+                          className="md:col-span-5 relative max-h-[320px] overflow-hidden bg-[#141416] border border-[#383838] cursor-pointer group/photo flex items-center justify-center"
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveLightboxImage(act.photoUrl!);
@@ -1181,7 +1222,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                             src={act.photoUrl}
                             alt={act.title}
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform duration-500"
+                            className="w-full h-auto max-h-[320px] object-contain group-hover/photo:scale-105 transition-transform duration-500"
                           />
                         </div>
                       )}
@@ -1193,7 +1234,22 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 <div className="px-4 py-2.5 bg-[#1e1e1e] border-t border-[#2d2d2d] flex items-center justify-between gap-3">
                   {/* Left: Tagged Car / Vehicle (replaces POST) */}
                   <div className="flex items-center min-w-0">
-                    {isPost ? (
+                    {isRegistration ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (act.vehicleId) onSelectVehicle(act.vehicleId);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-mono text-[#bbbbbb] hover:text-[#C8102E] transition-colors truncate cursor-pointer group/veh"
+                        title={`View ${act.vehicleName} in garage`}
+                      >
+                        <Car className="w-3.5 h-3.5 text-[#C8102E] shrink-0" />
+                        <span className="font-['Oswald'] font-bold uppercase tracking-wider text-[#C8102E] group-hover/veh:underline">
+                          View In Garage
+                        </span>
+                      </button>
+                    ) : isPost ? (
                       act.vehicleName ? (
                         <button
                           type="button"

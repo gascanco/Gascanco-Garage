@@ -38,17 +38,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </span>
         </button>
 
-        {/* 2. My Garage & Registry */}
+        {/* 2. Builds (Slammed S10 Air Ride Icon) */}
         <button
           type="button"
-          onClick={() => setActiveView({ type: 'my-garage' })}
+          onClick={() => setActiveView({ type: 'community-builds' })}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 sm:px-4 transition-colors cursor-pointer ${
-            isMyGarage ? 'text-[#C8102E]' : 'text-[#aaaaaa] hover:text-white'
+            isCommunity ? 'text-[#C8102E]' : 'text-[#aaaaaa] hover:text-white'
           }`}
         >
-          <Wrench className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
+          <SlammedTruckIcon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
           <span className="text-[10px] sm:text-xs md:text-sm font-['Oswald'] tracking-wider uppercase font-bold">
-            MY GARAGE
+            BUILDS
           </span>
         </button>
 
@@ -66,21 +66,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </span>
         </button>
 
-        {/* 4. Builds (Slammed S10 Air Ride Icon) */}
-        <button
-          type="button"
-          onClick={() => setActiveView({ type: 'community-builds' })}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 sm:px-4 transition-colors cursor-pointer ${
-            isCommunity ? 'text-[#C8102E]' : 'text-[#aaaaaa] hover:text-white'
-          }`}
-        >
-          <SlammedTruckIcon className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-          <span className="text-[10px] sm:text-xs md:text-sm font-['Oswald'] tracking-wider uppercase font-bold">
-            BUILDS
-          </span>
-        </button>
-
-        {/* 5. Events */}
+        {/* 4. Events */}
         <button
           type="button"
           onClick={() => setActiveView({ type: 'events' })}
@@ -91,6 +77,20 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <Calendar className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
           <span className="text-[10px] sm:text-xs md:text-sm font-['Oswald'] tracking-wider uppercase font-bold">
             EVENTS
+          </span>
+        </button>
+
+        {/* 5. My Garage & Registry */}
+        <button
+          type="button"
+          onClick={() => setActiveView({ type: 'my-garage' })}
+          className={`flex flex-col items-center gap-1 py-1 px-2.5 sm:px-4 transition-colors cursor-pointer ${
+            isMyGarage ? 'text-[#C8102E]' : 'text-[#aaaaaa] hover:text-white'
+          }`}
+        >
+          <Wrench className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
+          <span className="text-[10px] sm:text-xs md:text-sm font-['Oswald'] tracking-wider uppercase font-bold">
+            MY GARAGE
           </span>
         </button>
       </div>

@@ -1,118 +1,130 @@
-# Mobile Layout, Wrapping Refinements & Vehicle Details Navigation
-
-Comprehensive architectural plan to eliminate text clipping, awkward line breaks, and horizontal scrollbars on mobile devices, alongside introducing a streamlined full-width navigation and dedicated "About the Build" section on mobile vehicle details.
-
----
+# Live Feed Refresh, Builds Grid Overhaul & Database Standardization
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following design choices have been confirmed based on user feedback:
-> - **Mobile Tab Navigation Style**: Full-width button bar displaying all options simultaneously (no horizontal scrollbar or clipped tabs).
-> - **New Mobile Section Name**: **"About the Build"**, situated before "Photos" on mobile viewports.
-> - **Mobile Section Scope**: Houses "The Story Behind This Build", "Builder / Owner Container", "Build Crew & Sponsors", and "More Builds".
-> - **Desktop Continuity**: Desktop retains the spacious dual-column layout (Specs & Story in main column, Builder/Crew/Related Builds in sidebar).
+> The following user preferences were confirmed during Phase 1:
+> - **Builds Page Card Layout**: Vehicle Year, Make & Model arranged on the left side with larger typography, and Builder Name & Location aligned to the right side.
+> - **Live Feed Registration Cards**: Simplified announcement format ("[User First Name] just added a [Year Make Model] to their garage") with full-width uncropped vehicle photo, stripping out duplicate titles, categories, and technical specs dumps.
+> - **Location Formatting**: Standardized `City, State` database sourcing with auto-normalization to prevent typos and deduplicate city/state filters.
+> - **Navigation Bar Order**: Reordered to strictly `Live` → `Builds` → `Add` → `Events` → `My Garage`.
 
 ---
 
 ## 1. Overview & Core Concept
 
-### What It Delivers
-1. **App-Wide Mobile Wrapping Resolution**:
-   - Fixes cramped author card headers in `CommunityPollCard` and feed post cards where long names, badges, and action buttons squeeze into orphan lines (e.g. orphan bullet `•` dots, vertically split locations, and truncated names).
-   - Eliminates clipping on the "SPONSORED" badge in advertisement drops.
-   - Converts bulky desktop action buttons (like EDIT/DELETE in mobile post headers) into responsive, high-density icon buttons on small screens.
-2. **Zero-Scroll Mobile Vehicle Details Navigation**:
-   - Replaces the `overflow-x-auto` tab row with an integrated, full-width 4-button segmented bar that fits 100% of the mobile viewport width.
-   - Moves secondary actions (Edit Build, Share) into a clean, dedicated utility bar above or integrated alongside the tabs.
-3. **Dedicated "About the Build" Mobile Section**:
-   - On mobile, extracts the long-form Story, Builder Profile, Crew & Sponsors list, and Related Manufacturer Builds into a dedicated tab before "Photos":
-     `[ Technical Sheet ] [ About the Build ] [ Photos ] [ Discussions ]`
-   - Keeps the desktop view intact with its sidebar layout.
+This update refines the primary social and browsing surfaces across the Gascan Co. automotive community platform:
+1. **Live Activity Feed**: Uncropped photography in all feed items, natural relative timestamps ("2 Minutes Ago"), and streamlined vehicle registration cards that read like social updates.
+2. **Mobile & Desktop Navigation**: Reordering the bottom navigation bar to `Live` · `Builds` · `Add` · `Events` · `My Garage` without altering other styling or functionality.
+3. **User Profile & Registry**: Updating "Member Since" formatting to written-out Month & Year (`October 2026`) and standardizing user/vehicle locations in the database.
+4. **Builds Page**: Removing "Community Builders" on mobile screens, displaying full uncropped vehicle photos in each card, increasing typography size, and balancing Year/Make/Model on the left with Builder/Location on the right.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Mobile Navigation Structure (Vehicle Details)
-```
-┌─────────────────────────────────────────────────────────────┐
-│ ‹ Back to Builds                               [Share] [Edit]│
-│ 1999 NISSAN SKYLINE GT-R                                    │
-│ [=================== HERO PHOTO CAROUSEL ==================]│
-├─────────────────────────────────────────────────────────────┤
-│  FULL-WIDTH SEGMENTED MOBILE BUTTON BAR (All 4 visible)    │
-│ ┌──────────────┬──────────────┬──────────────┬─────────────┐│
-│ │ ⚙️ Specs     │ 📖 About     │ 📷 Photos(4) │ 💬 Chat(12) ││
-│ └──────────────┴──────────────┴──────────────┴─────────────┘│
-├─────────────────────────────────────────────────────────────┤
-│ TAB CONTENT AREA:                                           │
-│ - Tab 1 [Specs]: Complete Factory & Build Spec Table        │
-│ - Tab 2 [About the Build]:                                  │
-│     • The Story Behind This Build (Markdown & Links)        │
-│     • Builder Profile Card (Avatar, Location, Member Since) │
-│     • Build Crew & Sponsors (Verified partners & links)     │
-│     • More Builds from Manufacturer                         │
-│ - Tab 3 [Photos]: Responsive Photo Grid & Lightbox          │
-│ - Tab 4 [Discussions]: Threaded Community Conversation       │
-└─────────────────────────────────────────────────────────────┘
-```
+### A. Live Feed Photo Presentation & Relative Timestamps
+- **Uncropped Media**: Replace fixed aspect ratios and `object-cover` cropping with responsive `object-contain w-full max-h-[520px] bg-[#141414]`, ensuring the entire vehicle, wheel setup, and photo framing is visible.
+- **Relative Time Format**: Replace static date strings with human-friendly elapsed time badges:
+  - `< 1 min`: "Just Now"
+  - `1 - 59 mins`: "N Minutes Ago"
+  - `1 - 23 hrs`: "N Hours Ago"
+  - `1 day`: "Yesterday" or "1 Day Ago"
+  - `2 - 6 days`: "N Days Ago"
+  - `1 - 3 weeks`: "N Weeks Ago"
+  - `1 - 11 months`: "N Months Ago"
+  - `1+ years`: "N Years Ago"
 
-### Visual & Layout Adjustments by Component
-- **Standard Feed Posts (`ActivityFeed.tsx`)**:
-  - Author meta row uses `whitespace-nowrap` for `${location} • ${date}` so bullets never drop to lonely lines.
-  - Action buttons (`Edit`, `Delete`) collapse to compact icon buttons (`p-1.5`) on `< sm` viewports and expand to text + icon on `sm:`.
-  - Author name flexes with `min-w-0` and graceful typography scaling.
-- **Community Poll Cards (`CommunityPollCard.tsx`)**:
-  - Re-architects header layout for mobile:
-    - Author avatar + name + ADMIN badge take primary row.
-    - Category pill (`ENGINE TECH & TRACK`) and admin toggles adjust gracefully on mobile so they don't crush the author's name.
-- **Advertisement Drops**:
-  - Title and "SPONSORED" label wrap with `flex-wrap sm:flex-nowrap`, guaranteeing the red "SPONSORED" tag has protected right margin and zero character truncation.
-- **Vehicle Detail Tab Bar**:
-  - Replaces `overflow-x-auto` with a clean `grid grid-cols-4` on mobile, transitioning to an inline flex row on `sm:` and desktop.
-  - Active tab uses distinct high-contrast red accent (`bg-[#C8102E] text-white` or `border-b-2 border-[#C8102E] text-[#C8102E]`), tactile press effect (`active:scale-[0.98]`).
+### B. Simplified Automatic Registration Cards
+- **Announcement Text**: Clean, unboxed bold announcement:
+  `"[First Name] just added a [Year] [Make] [Model] to their garage."`
+- **Removed Elements**: Suppress category badges, specs dumps (engine, transmission, drivetrain specs strings), and duplicate header text.
+- **Card Flow**: Author Header (Avatar, Name, Location • Relative Time) → Clear Social Headline → Full Uncropped Vehicle Showcase → Interactive Reactions & Comments.
+
+### C. Builds Page Grid & Card Redesign
+- **Uncropped Photography**: Vehicle cards utilize `object-contain w-full aspect-[4/3] sm:aspect-[16/10] bg-[#181818]` to prevent wheel/spoiler clipping.
+- **Enlarged Left/Right Card Body**:
+  - **Left**: Bold uppercase Year Make Model (`text-base sm:text-lg font-['Oswald']`) with Trim below (`text-xs sm:text-sm font-mono text-[#aaaaaa]`).
+  - **Right**: Builder Name (`text-sm sm:text-base font-['Oswald'] text-[#e0e0e0]`) and Location with MapPin icon (`text-xs sm:text-sm font-mono text-[#888888]`).
+- **Mobile Clutter Elimination**: "Community Builders" / builder sidebar showcase hidden on mobile (`hidden sm:block`) so mobile users dive directly into the builds grid.
+
+### D. Navigation Bar Order
+- Update `MobileBottomNav.tsx` order strictly to:
+  1. **Live** (`Activity`)
+  2. **Builds** (`SlammedTruckIcon`)
+  3. **Add** (Center Crimson Plus Button)
+  4. **Events** (`Calendar`)
+  5. **My Garage** (`Wrench`)
+
+### E. Location Database Standardization
+- Structured auto-formatting for City and State (e.g., `Costa Mesa, CA`).
+- Searchable city/state auto-suggest or structured selection in `AddVehicleModal` and `MyGarageView` profile editing to prevent typos like `costa mesa ca` or `Costa Mesa California`.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1: Full-Width 4-Tab Button Bar vs. Dropdown**:
-  - *Chosen Approach*: 4-button segmented grid bar.
-  - *Why*: Allows single-tap instant access across all sections without hiding options behind a select modal or dropdown. The 4 tab labels ("Specs", "About", "Photos", "Chat") fit comfortably across 360px+ mobile screens.
-- **Decision 2: Mobile "About the Build" Tab vs. Desktop Dual-Column**:
-  - *Chosen Approach*: Conditional rendering based on viewport and tab state:
-    - On desktop (`lg:block`), the sidebar continues displaying the Owner Card, Crew & Sponsors, and More Builds, while the main column shows Technical Sheet & Story.
-    - On mobile (`lg:hidden`), these 4 sections are grouped exclusively inside the "About the Build" tab, keeping the "Specs" tab clean and lightweight.
-- **Decision 3: Mobile Action Buttons in Feed Headers**:
-  - *Chosen Approach*: Icon-only buttons with tooltips on mobile screens under 640px.
-  - *Why*: Prevents text buttons ("EDIT", "DELETE") from consuming 140px of horizontal width and squeezing user names and locations.
+- **Decision 1: Uncropped Photos vs. Uniform Card Heights**
+  - *Chosen Approach*: Card media containers maintain consistent frame boundaries with subtle letterboxing/pillarboxing (`bg-[#141414]` and `object-contain`), ensuring every custom bumper, roof rack, and wheel fitment is 100% visible without breaking grid rhythm.
+  - *Why*: Automotive enthusiasts care deeply about full vehicle proportions; cropping cuts off wheels and aero.
+- **Decision 2: Automatic Registration Card Streamlining**
+  - *Chosen Approach*: Convert dense technical specification cards in the feed into punchy social announcement cards. Users who want technical specs can tap the vehicle to view the full Technical Sheet.
+  - *Why*: Enhances feed scannability and prevents repetitive duplicate headers.
+- **Decision 3: Location Sourcing**
+  - *Chosen Approach*: Implement a normalization utility (`normalizeCityState`) combined with curated US metropolitan suggestions to keep database queries consistent across all views and filters.
 
 ---
 
-## 4. Technical Architecture & Component Mapping
+## 4. Technical Architecture & Component Structure
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    GasCanCo Mobile Layout                    │
-├──────────────────────────────────────────────────────────────┤
-│ ActivityFeed                                                 │
-│ ├─ FeedPostCard Header (Responsive flex layout, icon buttons)│
-│ ├─ AdvertisementCard (Unconstrained title & pinned badge)    │
-│ └─ CommunityPollCard (Re-ordered header & adaptive actions)  │
-├──────────────────────────────────────────────────────────────┤
-│ VehicleDetailView                                            │
-│ ├─ Mobile Utility Row (Share & Edit actions cleanly placed)  │
-│ ├─ FullWidthTabBar (grid grid-cols-4 on mobile, no scrollbar)│
-│ ├─ Tab 1: Specs (Technical Sheet table only)                 │
-│ ├─ Tab 2: About the Build (Story + Owner + Crew + Related)   │
-│ ├─ Tab 3: Photos (Gallery & Lightbox)                        │
-│ ├─ Tab 4: Discussions (Threaded Comments)                    │
-│ └─ Desktop Sidebar (Rendered on lg:block only)               │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                             GASCAN CO APP                              │
+├────────────────────────────────────────────────────────────────────────┤
+│ Header: Wordmark · Store Links · Cart · Add Vehicle                    │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  [ LIVE FEED VIEW ]               [ BUILDS GRID VIEW ]                 │
+│  ActivityFeed.tsx                 DiscoverView.tsx                     │
+│  ├── Relative Timestamp Helper    ├── Mobile: Builders hidden          │
+│  ├── Uncropped Photos (contain)   └── VehicleCard.tsx                  │
+│  │   └── Max-h container              ├── Uncropped photo              │
+│  └── Registration Card Format         └── Left: Year Make Model        │
+│      └── "[User] added [Vehicle]"         Right: Builder & Location    │
+│                                                                        │
+│  [ MY GARAGE VIEW ]               [ NAVIGATION ]                       │
+│  MyGarageView.tsx                 MobileBottomNav.tsx                  │
+│  ├── Member Since: Month & Year   └── Reordered Buttons:               │
+│  └── City & State Normalizer          1. LIVE                          │
+│                                       2. BUILDS                        │
+│  [ DATA LAYER ]                       3. ADD (+)                       │
+│  src/utils/dateAndLocationUtils.ts    4. EVENTS                        │
+│  ├── formatTimeAgo()                  5. MY GARAGE                     │
+│  ├── formatMemberSince()                                               │
+│  └── normalizeCityState()                                              │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Component State & Props
-- `activeTab`: Extended from `'specs' | 'photos' | 'discussion'` to `'specs' | 'about' | 'photos' | 'discussion'`.
-- On desktop, clicking `'specs'` displays specifications, while `'about'` displays the narrative; desktop sidebar remains consistently visible on `lg:` viewports.
-- On mobile, clicking `'about'` renders all 4 requested containers in vertical rhythm before photos.
+### Component & File Mapping
+
+1. `src/utils/dateAndLocationUtils.ts`:
+   - `formatTimeAgo(dateStrOrTimestamp: string | number): string`
+   - `formatMemberSince(dateStr?: string): string`
+   - `normalizeCityState(input: string): string`
+   - Curated `POPULAR_US_CITIES` list for location auto-completion.
+2. `src/components/common/ActivityFeed.tsx`:
+   - Integrate `formatTimeAgo()` across feed items.
+   - For `type === 'build_update'`, render simplified "[First Name] just added a [Year Make Model] to their garage" card.
+   - Update all image containers (`post`, `event`, `build_update`) to `object-contain` without cropping.
+3. `src/components/navigation/MobileBottomNav.tsx`:
+   - Rearrange button JSX order: `Live` → `Builds` → `Add` → `Events` → `My Garage`.
+4. `src/components/views/MyGarageView.tsx`:
+   - Display `Member since {formatMemberSince(currentUser.memberSince)}`.
+   - Incorporate normalized location selection.
+5. `src/components/views/DiscoverView.tsx`:
+   - Hide "Community Builders" spotlight/sidebar on mobile screens (`hidden sm:block`).
+6. `src/components/cards/VehicleCard.tsx`:
+   - Update `variant="grid"` to display full uncropped photo (`object-contain`).
+   - Increase text size and split layout: Left side (Year Make Model + Trim), Right side (Builder Name + Location).
+   - On mobile, hide builder name if mobile builder hiding applies.

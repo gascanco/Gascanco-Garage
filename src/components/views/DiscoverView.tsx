@@ -121,9 +121,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   return (
     <div className="pb-16 bg-[#303030] text-white">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-5 sm:pt-6">
-        {/* Spotlight Build (Remains full length at top - strictly the only spotlight) */}
+        {/* Spotlight Build - Desktop only, removed on mobile */}
         {!hasActiveFilters && spotlightVehicle && (
-          <div className="mb-5 sm:mb-6">
+          <div className="mb-5 sm:mb-6 hidden sm:block">
             <VehicleCard
               vehicle={spotlightVehicle}
               variant="featured"

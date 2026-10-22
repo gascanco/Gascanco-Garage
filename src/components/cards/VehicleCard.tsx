@@ -61,7 +61,27 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
     return rawTrim || rawChassis || 'Standard';
   };
 
-  // 1. FEATURED EDITORIAL SPOTLIGHT VARIANT (Strictly single line, zero wrap, clean & balanced)
+  // Full title string
+  const vehicleTitle = `${vehicle.year} ${vehicle.make} ${vehicle.model}`;
+
+  // Dynamically calculate font sizes so text remains large and prominent on mobile,
+  // but on desktop scales dynamically to fit cleanly without causing cards to expand in height.
+  const getDynamicTitleClass = (text: string) => {
+    const len = text.length;
+    if (len > 30) return 'text-sm sm:text-base md:text-xs lg:text-xs';
+    if (len > 22) return 'text-base sm:text-lg md:text-xs lg:text-sm';
+    if (len > 16) return 'text-lg sm:text-xl md:text-sm lg:text-base';
+    return 'text-xl sm:text-2xl md:text-base lg:text-lg';
+  };
+
+  const getDynamicOwnerClass = (text: string) => {
+    const len = text.length;
+    if (len > 22) return 'text-xs sm:text-sm md:text-[10px] lg:text-xs';
+    if (len > 15) return 'text-xs sm:text-sm md:text-xs lg:text-xs font-semibold';
+    return 'text-sm sm:text-base md:text-xs lg:text-sm font-bold';
+  };
+
+  // 1. FEATURED EDITORIAL SPOTLIGHT VARIANT (Clean & balanced, no periods)
   if (variant === 'featured') {
     return (
       <div 
@@ -98,31 +118,31 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           {/* Details & Specs - Strictly single-line text and titles (no wrap, not cut off) */}
           <div className="md:col-span-5 p-3.5 sm:p-5 md:p-6 flex flex-col justify-between min-w-0 overflow-hidden">
             <div className="min-w-0 overflow-hidden space-y-2">
-              {/* Line 1: Make & Model - Strictly single-line, no wrap */}
-              <h2 className="font-['Oswald'] text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold uppercase tracking-tight text-white group-hover:text-[#C8102E] transition-colors leading-tight whitespace-nowrap truncate block w-full">
-                {vehicle.year} {vehicle.make} {vehicle.model}
+              {/* Line 1: Make & Model - Editorial Spotlight */}
+              <h2 className="font-['Oswald'] text-xl sm:text-2xl md:text-3xl font-bold uppercase tracking-tight text-white group-hover:text-[#C8102E] transition-colors leading-tight break-words block w-full">
+                {vehicleTitle}
               </h2>
 
               {/* Line 2: The Trim & Chassis - Right below Make & Model (Paint color excluded) */}
-              <div className="text-xs sm:text-sm font-mono text-[#cccccc] whitespace-nowrap truncate block w-full">
+              <div className="text-xs sm:text-sm font-mono text-[#cccccc] break-words block w-full">
                 <span className="text-[#888888] uppercase text-[10px] sm:text-[11px] font-semibold tracking-wider mr-1.5">Trim & Chassis:</span>
                 <span className="text-white font-medium">{getTrimAndChassis()}</span>
               </div>
 
               {/* Line 3: AWD & Track Dedicated - Below Make & Model */}
-              <div className="flex items-center gap-2 text-xs font-mono whitespace-nowrap truncate w-full">
+              <div className="flex items-center gap-2 text-xs font-mono break-words w-full">
                 <span className="bg-[#C8102E]/20 text-[#ff4d6d] border border-[#C8102E]/40 px-2 py-0.5 text-[11px] font-bold uppercase shrink-0">
                   {vehicle.drivetrain}
                 </span>
                 <span className="text-[#555555] shrink-0">·</span>
-                <span className="text-[#e0e0e0] font-medium truncate">{vehicle.buildStatus}</span>
+                <span className="text-[#e0e0e0] font-medium">{vehicle.buildStatus}</span>
               </div>
 
               {/* Line 4: Clean Specs Bar (Engine & Specs - Single line, no wrap) */}
-              <div className="flex items-center gap-2.5 sm:gap-4 py-2 border-y border-[#383838] my-1 sm:my-2 text-xs font-mono text-[#aaaaaa] whitespace-nowrap overflow-hidden w-full">
-                <div className="flex items-center gap-1.5 min-w-0 truncate">
+              <div className="flex items-center gap-2.5 sm:gap-4 py-2 border-y border-[#383838] my-1 sm:my-2 text-xs font-mono text-[#aaaaaa] flex-wrap w-full">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[#777777] uppercase text-[10px] shrink-0">ENGINE</span>
-                  <span className="text-white font-medium truncate">{vehicle.engine}</span>
+                  <span className="text-white font-medium">{vehicle.engine}</span>
                 </div>
                 {vehicle.horsepower && (
                   <>
@@ -136,26 +156,26 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               </div>
             </div>
 
-            {/* Line 5: Owner Footer & Reaction Buttons - Single line, no wrap */}
-            <div className="pt-2.5 sm:pt-3 border-t border-[#383838] flex items-center justify-between gap-2 whitespace-nowrap min-w-0 w-full overflow-hidden">
-              <div className="flex items-center gap-2 min-w-0 truncate">
+            {/* Line 5: Owner Footer & Reaction Buttons - No periods */}
+            <div className="pt-2.5 sm:pt-3 border-t border-[#383838] flex items-center justify-between gap-2 min-w-0 w-full">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <img
                   src={vehicle.owner.avatar}
                   alt={vehicle.owner.name}
                   className="w-6 h-6 sm:w-7 sm:h-7 object-cover border border-[#C8102E] shrink-0"
                 />
-                <div className="min-w-0 truncate">
-                  <div className="text-xs font-semibold text-white leading-tight font-['Oswald'] uppercase whitespace-nowrap truncate flex items-center gap-1">
-                    <span className="truncate">{vehicle.owner.name}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm font-semibold text-white leading-tight font-['Oswald'] uppercase break-words flex items-center gap-1">
+                    <span>{vehicle.owner.name}</span>
                     {isHardAdmin(vehicle.owner) && (
                       <span className="px-1 py-0.2 bg-[#C8102E] text-white font-['Oswald'] font-black text-[8px] tracking-wider uppercase inline-flex items-center gap-0.5 shrink-0">
                         <ShieldCheck className="w-2 h-2" /> ADMIN
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] sm:text-[11px] text-[#888888] font-mono flex items-center gap-1 whitespace-nowrap truncate">
+                  <div className="text-[10px] sm:text-[11px] text-[#888888] font-mono flex items-center gap-1 break-words">
                     <MapPin className="w-2.5 h-2.5 text-[#C8102E] shrink-0" />
-                    <span className="truncate">{vehicle.owner.location}</span>
+                    <span>{vehicle.owner.location}</span>
                   </div>
                 </div>
               </div>
@@ -229,8 +249,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
       onClick={() => onSelect(vehicle.id)}
       className="group relative flex flex-col h-full min-w-0 w-full border border-[#383838] bg-[#222222] hover:border-[#C8102E] hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden select-none"
     >
-      {/* Edge-to-Edge Image Container (Marketplace 4:3) */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#181818] shrink-0">
+      {/* Full Photo Showcase Container (Uncropped) */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#141416] shrink-0 flex items-center justify-center">
         {!imageError ? (
           <img
             src={vehicle.primaryImage}
@@ -238,7 +258,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
             onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-104 ${
+            className={`w-full h-full object-contain transition-transform duration-500 group-hover:scale-102 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -246,7 +266,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           renderImageFallback()
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
         {/* Top Badges / Indicators */}
         <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">
@@ -278,7 +298,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           )}
         </div>
 
-        {/* Reaction Buttons Overlay (Compact, neat corner alignment, zero overflow) */}
+        {/* Reaction Buttons Overlay */}
         {variant !== 'my-garage' && (
           <div 
             className="absolute bottom-2 right-2 z-10 pointer-events-auto bg-black/80 backdrop-blur-xs border border-white/10 px-1.5 py-1 shadow-sm max-w-[calc(100%-12px)] overflow-hidden"
@@ -297,27 +317,30 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         )}
       </div>
 
-      {/* Card Body - Strictly Year Make Model, Trim, and Location only */}
-      <div className="p-3 sm:p-4 md:p-5 flex-1 flex flex-col justify-start min-w-0 w-full overflow-hidden">
-        <div className="min-w-0 w-full overflow-hidden space-y-1">
-          {/* 1. Year Make Model - Dynamically sized font */}
-          <h3 className="font-['Oswald'] text-sm sm:text-base md:text-lg lg:text-xl font-bold uppercase text-white tracking-tight leading-tight group-hover:text-[#C8102E] transition-colors truncate whitespace-nowrap block w-full">
-            {vehicle.year} {vehicle.make} {vehicle.model}
+      {/* Card Body - Bigger text on mobile, dynamically scaled on desktop to keep cards compact and preserve the exact vibe & layout */}
+      <div className="p-3 sm:p-3.5 md:p-3 flex-1 flex items-start justify-between gap-2.5 sm:gap-3 min-w-0 w-full bg-[#222224] border-t border-[#333336]">
+        {/* Left Side: Vehicle Year Make Model & Trim - Full text always visible, no periods */}
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <h3 className={`font-['Oswald'] font-bold uppercase text-white tracking-tight leading-tight group-hover:text-[#C8102E] transition-colors break-words ${getDynamicTitleClass(vehicleTitle)}`}>
+            {vehicleTitle}
           </h3>
-
-          {/* 2. Trim - Dynamically sized */}
-          <div className="text-xs sm:text-sm md:text-base font-mono text-[#aaaaaa] truncate whitespace-nowrap block w-full">
+          <div className="text-xs font-mono text-[#aaaaaa] break-words leading-tight">
             {vehicle.trim || 'Standard'}
           </div>
-
-          {/* 3. Location - Dynamically sized */}
-          {showLocation && (
-            <div className="flex items-center gap-1.5 text-xs sm:text-sm text-[#777777] font-mono truncate whitespace-nowrap w-full pt-0.5">
-              <MapPin className="w-3.5 h-3.5 text-[#aaaaaa] shrink-0" />
-              <span className="truncate whitespace-nowrap">{vehicle.owner.location}</span>
-            </div>
-          )}
         </div>
+
+        {/* Right Side: Builder Name & Location - Always visible (even on mobile), dynamically sized, no periods */}
+        {showLocation && (
+          <div className="flex flex-col items-end text-right shrink-0 min-w-[32%] max-w-[48%] space-y-0.5">
+            <span className={`font-['Oswald'] font-bold uppercase text-[#e0e0e0] group-hover:text-white transition-colors break-words text-right leading-tight ${getDynamicOwnerClass(vehicle.owner.name)}`}>
+              {vehicle.owner.name}
+            </span>
+            <div className="flex items-center justify-end gap-1 text-[11px] sm:text-xs text-[#888888] font-mono break-words text-right leading-tight">
+              <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#C8102E] shrink-0" />
+              <span className="break-words">{vehicle.owner.location}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

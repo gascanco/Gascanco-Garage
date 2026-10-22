@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for resolving mobile wrapping issues across the app and overhauling the Vehicle Details mobile tab navigation:\n1. Mobile Header & Card Wrapping Fixes: Eliminating orphan bullet points, text clipping on Sponsored badges, cramped author headers in CommunityPollCard and standard posts via responsive icon buttons and flex-wrap stabilization.\n2. Vehicle Details Mobile Tab Navigation: Replacing horizontal scrolling with a sleek full-width 4-button segmented bar (Technical Sheet, About the Build, Photos, Discussions).\n3. 'About the Build' Mobile Section: Moving the Story, Builder Profile, Crew & Sponsors, and More Builds to a dedicated mobile section before Photos, while maintaining the dual-column desktop layout.",
-  "updatedAt":  "2026-10-21T22:59:58.291127643Z",
+  "summary":  "Implementation plan for Live Feed uncropped photos and relative timestamps, simplified vehicle registration announcement cards, navigation button reordering, My Garage month-year date formatting, standardized City and State location database sourcing, and Builds page card redesign with uncropped photos and left/right detail alignment.",
+  "updatedAt":  "2026-10-22T10:38:31.003845255Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

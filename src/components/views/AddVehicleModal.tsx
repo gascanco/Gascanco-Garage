@@ -3,6 +3,7 @@ import {
   Vehicle, VehicleCategory, Owner, BuildUpdate, 
   GarageEvent, CommunityPost, isHardAdmin, CommunityPoll
 } from '../../types/garage';
+import { normalizeCityState, POPULAR_US_CITIES } from '../../utils/dateAndLocationUtils';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
 import { 
   X, Check, ArrowRight, ArrowLeft, Camera, Sparkles, 
@@ -609,7 +610,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         galleryImages: allGalleryImages,
         owner: {
           ...editingVehicle.owner,
-          location: buildLocation.trim() || editingVehicle.owner.location || currentUser.location || 'Local',
+          location: normalizeCityState(buildLocation.trim() || editingVehicle.owner.location || currentUser.location),
         },
         category: category as any,
         buildStatus: buildStatus.trim() || editingVehicle.buildStatus,
@@ -633,7 +634,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         galleryImages: allGalleryImages,
         owner: {
           ...currentUser,
-          location: buildLocation.trim() || currentUser.location || 'Local',
+          location: normalizeCityState(buildLocation.trim() || currentUser.location),
         },
         category: category as any,
         buildStatus: buildStatus.trim() || 'Daily',
@@ -2274,11 +2275,18 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                       </label>
                       <input
                         type="text"
+                        list="popular-us-cities"
                         value={buildLocation}
                         onChange={e => setBuildLocation(e.target.value)}
-                        placeholder="Phoenix, AZ"
+                        onBlur={() => setBuildLocation(prev => normalizeCityState(prev))}
+                        placeholder="e.g. Phoenix, AZ"
                         className="w-full bg-[#1c1c1c] border border-[#444444] px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
                       />
+                      <datalist id="popular-us-cities">
+                        {POPULAR_US_CITIES.map((c) => (
+                          <option key={c} value={c} />
+                        ))}
+                      </datalist>
                     </div>
 
                     <div>
