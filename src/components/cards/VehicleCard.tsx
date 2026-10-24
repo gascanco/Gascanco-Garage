@@ -249,24 +249,21 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
       onClick={() => onSelect(vehicle.id)}
       className="group relative flex flex-col h-full min-w-0 w-full border border-[#383838] bg-[#222222] hover:border-[#C8102E] hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden select-none"
     >
-      {/* Full Photo Showcase Container (Uncropped) */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#141416] shrink-0 flex items-center justify-center">
+      {/* Full Photo Showcase Container (Full width, Uncropped, No Black Background) */}
+      <div className="relative w-full overflow-hidden bg-transparent shrink-0">
         {!imageError ? (
           <img
             src={vehicle.primaryImage}
             alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-contain transition-transform duration-500 group-hover:scale-102 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className="w-full h-auto block object-contain transition-transform duration-500 group-hover:scale-102"
           />
         ) : (
-          renderImageFallback()
+          <div className="aspect-[16/10] w-full bg-[#1e1e20] flex items-center justify-center">
+            {renderImageFallback()}
+          </div>
         )}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
         {/* Top Badges / Indicators */}
         <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">

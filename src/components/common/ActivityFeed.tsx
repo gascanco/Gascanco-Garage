@@ -105,13 +105,24 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   // Edit Post State
   const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editCategory, setEditCategory] = useState('General Discussion');
   const [editVehicleId, setEditVehicleId] = useState('');
   const [editImages, setEditImages] = useState<string[]>([]);
   const [editLinkPreview, setEditLinkPreview] = useState<CommunityPost['linkPreview'] | null>(null);
   const [editDismissedUrl, setEditDismissedUrl] = useState<string | null>(null);
   const [isEditDragOver, setIsEditDragOver] = useState(false);
   const editFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Sponsored Product Drop Specific Edit State
+  const [editIsAdvertisement, setEditIsAdvertisement] = useState(false);
+  const [editProductTitle, setEditProductTitle] = useState('');
+  const [editProductPrice, setEditProductPrice] = useState('');
+  const [editProductOriginalPrice, setEditProductOriginalPrice] = useState('');
+  const [editProductUrl, setEditProductUrl] = useState('');
+  const [editProductCtaText, setEditProductCtaText] = useState('');
+  const [editProductCollection, setEditProductCollection] = useState('');
 
   // Vehicles owned by the logged-in user
   const userVehicles = useMemo(() => {
@@ -177,6 +188,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     const targetPostId = act.postId || act.id.replace('act-post-', '');
     const found = posts.find(p => p.id === targetPostId) || {
       id: targetPostId,
+      title: act.title,
       content: act.description,
       author: act.owner,
       dateStr: act.dateStr,
@@ -187,14 +199,43 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
       linkPreview: act.linkPreview,
       likesCount: act.likesCount || 0,
       createdAt: new Date().toISOString(),
+      isAdvertisement: act.isAdvertisement,
+      shopifyProduct: act.shopifyProduct,
+      category: act.postCategory || act.badge,
     };
 
+    const isAd = Boolean(
+      found.isAdvertisement || 
+      act.isAdvertisement || 
+      found.shopifyProduct || 
+      act.shopifyProduct ||
+      found.category === 'Sponsored Drop' ||
+      found.category === 'Sponsored' ||
+      act.postCategory === 'Sponsored Drops'
+    );
+
+    const prod = found.shopifyProduct || act.shopifyProduct;
+
     setEditingPost(found);
-    setEditContent(found.content || '');
+    setEditTitle(found.title || act.title || '');
+    setEditContent(found.content || act.description || '');
+    setEditCategory(found.category || act.postCategory || (isAd ? 'Sponsored Drop' : 'General Discussion'));
     setEditVehicleId(found.vehicleId || '');
-    setEditImages(found.images && found.images.length > 0 ? [...found.images] : (found.imageUrl ? [found.imageUrl] : []));
+    
+    const initialImages = (found.images && found.images.length > 0)
+      ? [...found.images]
+      : (found.imageUrl ? [found.imageUrl] : (act.photoUrl ? [act.photoUrl] : []));
+    setEditImages(initialImages);
     setEditLinkPreview(found.linkPreview || null);
     setEditDismissedUrl(null);
+
+    setEditIsAdvertisement(isAd);
+    setEditProductTitle(prod?.title || found.title || act.title || 'GASCANCO Heavyweight Work Hoodie');
+    setEditProductPrice(prod?.price || '$68.00 USD');
+    setEditProductOriginalPrice(prod?.originalPrice || '');
+    setEditProductUrl(prod?.productUrl || 'https://gascanco.com/collections/apparel');
+    setEditProductCtaText(prod?.ctaText || 'Shop on Shopify');
+    setEditProductCollection(prod?.collectionName || 'Garage Apparel & Gear');
   };
 
   const handleEditFilesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,17 +277,35 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   const handleSaveEditPost = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPost) return;
-    if (!editContent.trim() && editImages.length === 0) return;
+
+    if (editIsAdvertisement) {
+      if (!editProductTitle.trim()) return;
+      if (!editProductPrice.trim()) return;
+      if (!editProductUrl.trim()) return;
+    } else {
+      if (!editContent.trim() && editImages.length === 0) return;
+    }
 
     const taggedVehicle = userVehicles.find((v) => v.id === editVehicleId);
     const updated: CommunityPost = {
       ...editingPost,
+      title: editIsAdvertisement ? editProductTitle.trim() : (editTitle.trim() || undefined),
       content: editContent.trim(),
+      category: editIsAdvertisement ? 'Sponsored Drop' : (editCategory || 'General Discussion'),
       vehicleId: editVehicleId || undefined,
       vehicleName: taggedVehicle ? `${taggedVehicle.year} ${taggedVehicle.make} ${taggedVehicle.model}` : undefined,
       images: editImages.length > 0 ? editImages : undefined,
       imageUrl: editImages[0] || undefined,
-      linkPreview: editLinkPreview || undefined,
+      linkPreview: editIsAdvertisement ? undefined : (editLinkPreview || undefined),
+      isAdvertisement: editIsAdvertisement,
+      shopifyProduct: editIsAdvertisement ? {
+        title: editProductTitle.trim(),
+        price: editProductPrice.trim(),
+        originalPrice: editProductOriginalPrice.trim() || undefined,
+        productUrl: editProductUrl.trim(),
+        ctaText: editProductCtaText.trim() || 'Shop on Shopify',
+        collectionName: editProductCollection.trim() || 'Garage Apparel & Gear',
+      } : undefined,
     };
 
     onUpdatePost?.(updated);
@@ -255,8 +314,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
   const handleDeleteCurrentPost = () => {
     if (!editingPost) return;
-    onDeletePost?.(editingPost.id);
-    setEditingPost(null);
+    const msg = editIsAdvertisement 
+      ? 'Super Admin: Delete this sponsored drop from the feed?' 
+      : 'Delete this post from the feed?';
+    if (window.confirm(msg)) {
+      onDeletePost?.(editingPost.id);
+      setEditingPost(null);
+    }
   };
 
   // Helper to parse dates into sortable timestamps with realistic live relative times
@@ -1648,13 +1712,22 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[88vh] flex flex-col bg-[#202020] border border-[#444444] shadow-2xl overflow-hidden"
           >
-            {/* Header */}
+            {/* Header: Dynamic according to Post Type */}
             <div className="px-4 py-3 sm:px-5 sm:py-3.5 bg-[#181818] border-b border-[#333333] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Car className="w-4 h-4 text-[#C8102E]" />
-                <h3 className="font-['Oswald'] text-base font-bold uppercase tracking-wider text-white">
-                  Edit Post
+              <div className="flex items-center gap-2 min-w-0">
+                {editIsAdvertisement ? (
+                  <ShoppingBag className="w-4 h-4 text-[#C8102E] shrink-0" />
+                ) : (
+                  <MessageSquare className="w-4 h-4 text-[#C8102E] shrink-0" />
+                )}
+                <h3 className="font-['Oswald'] text-base font-bold uppercase tracking-wider text-white truncate">
+                  {editIsAdvertisement ? 'Edit Sponsor Post / Product Drop' : 'Edit Community Post'}
                 </h3>
+                {editIsAdvertisement && (
+                  <span className="px-1.5 py-0.5 bg-[#C8102E]/20 border border-[#C8102E]/50 text-[#ff4d6a] text-[9px] font-mono uppercase tracking-wider font-bold shrink-0">
+                    SPONSORED
+                  </span>
+                )}
               </div>
               <button
                 type="button"
@@ -1667,100 +1740,328 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             </div>
 
             <form onSubmit={handleSaveEditPost} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-3.5 sm:p-5 space-y-3 flex-1 overflow-y-auto overscroll-contain">
-                {/* Tag Vehicle */}
-                <div>
-                  <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa] flex items-center gap-1.5 mb-1.5">
-                    <Car className="w-3.5 h-3.5 text-[#C8102E]" />
-                    <span>Tag Vehicle</span>
-                  </label>
-                  <select
-                    value={editVehicleId}
-                    onChange={(e) => setEditVehicleId(e.target.value)}
-                    className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
-                  >
-                    <option value="">None / No Vehicle Tagged</option>
-                    {userVehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.year} {v.make} {v.model} {v.trim ? `• ${v.trim}` : ''} {v.nickname ? `("${v.nickname}")` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Post Content */}
-                <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
-                    Post Content
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    placeholder="Share updates, wrenching logs, or YouTube/website links..."
-                    className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E] leading-relaxed resize-none"
-                  />
-                </div>
-
-                {/* Live Link Preview */}
-                {editLinkPreview && (
-                  <div className="bg-[#181818] border border-[#C8102E]/60 p-2 sm:p-2.5 space-y-1.5 relative animate-fade-in">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-mono text-[#ff8080]">
-                        {editLinkPreview.type === 'youtube' ? (
-                          <>
-                            <Youtube className="w-3.5 h-3.5 text-[#FF0000]" />
-                            <span className="font-bold uppercase tracking-wider text-white text-[11px]">YouTube Video</span>
-                          </>
-                        ) : (
-                          <>
-                            <Globe className="w-3.5 h-3.5 text-[#3b82f6]" />
-                            <span className="font-bold uppercase tracking-wider text-white text-[11px]">Website Link</span>
-                          </>
-                        )}
-                      </div>
+              <div className="p-3.5 sm:p-5 space-y-3.5 flex-1 overflow-y-auto overscroll-contain">
+                {/* Admin Post Type Selector: Toggle between Sponsor/Product and Community Post */}
+                {isHardAdmin(currentUser) && (
+                  <div className="p-2.5 bg-[#171719] border border-[#333336] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-mono text-[#aaaaaa]">
+                      <Tag className="w-3.5 h-3.5 text-[#C8102E]" />
+                      <span>Post Format:</span>
+                    </div>
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
-                          setEditDismissedUrl(editLinkPreview.url);
-                          setEditLinkPreview(null);
+                          setEditIsAdvertisement(true);
+                          if (!editProductTitle && editTitle) setEditProductTitle(editTitle);
                         }}
-                        className="text-[#888888] hover:text-white p-0.5 transition-colors cursor-pointer"
-                        title="Remove preview"
+                        className={`px-2.5 py-1 text-xs font-['Oswald'] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer ${
+                          editIsAdvertisement
+                            ? 'bg-[#C8102E] text-white border border-[#C8102E]'
+                            : 'bg-[#222225] text-[#888888] border border-[#38383a] hover:text-white'
+                        }`}
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <ShoppingBag className="w-3 h-3" />
+                        <span>Sponsor / Product</span>
                       </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-[#202020] border border-[#333333] p-1.5">
-                      {editLinkPreview.image && (
-                        <div className="relative w-16 h-10 bg-black shrink-0 overflow-hidden border border-[#3d3d3d]">
-                          <img
-                            src={editLinkPreview.image}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-['Oswald'] font-bold text-white uppercase tracking-wider truncate">
-                          {editLinkPreview.title || editLinkPreview.domain}
-                        </div>
-                        <div className="text-[10px] font-mono text-[#888888] truncate">
-                          {editLinkPreview.domain || editLinkPreview.url}
-                        </div>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditIsAdvertisement(false)}
+                        className={`px-2.5 py-1 text-xs font-['Oswald'] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer ${
+                          !editIsAdvertisement
+                            ? 'bg-[#C8102E] text-white border border-[#C8102E]'
+                            : 'bg-[#222225] text-[#888888] border border-[#38383a] hover:text-white'
+                        }`}
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>Standard Post</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {/* Photos Management */}
-                <div className="space-y-1.5">
+                {editIsAdvertisement ? (
+                  /* ========================================================
+                     SPONSOR / GASCANCO PRODUCT APPLICABLE FIELDS
+                     ======================================================== */
+                  <div className="space-y-3.5">
+                    {/* Sponsor Product Header Alert */}
+                    <div className="p-2.5 bg-[#C8102E]/10 border border-[#C8102E]/30 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-mono text-[#ff8080]">
+                        <ShoppingBag className="w-3.5 h-3.5 text-[#C8102E] shrink-0" />
+                        <span className="font-bold uppercase tracking-wider text-white">GASCANCO Sponsored Product Details</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#aaaaaa]">Shopify Linked</span>
+                    </div>
+
+                    {/* Product Name / Drop Title */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Product Name / Drop Title *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editProductTitle}
+                        onChange={(e) => setEditProductTitle(e.target.value)}
+                        placeholder="e.g. GASCANCO Heavyweight Work Hoodie"
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    {/* Pricing Row: Price & Original Price */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                          Price (USD) *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editProductPrice}
+                          onChange={(e) => setEditProductPrice(e.target.value)}
+                          placeholder="$68.00 USD"
+                          className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                          Original / Compare Price (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={editProductOriginalPrice}
+                          onChange={(e) => setEditProductOriginalPrice(e.target.value)}
+                          placeholder="$82.00 USD"
+                          className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Shopify Store / Product URL */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Shopify Store / Product URL *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="url"
+                          required
+                          value={editProductUrl}
+                          onChange={(e) => setEditProductUrl(e.target.value)}
+                          placeholder="https://gascanco.com/collections/apparel"
+                          className="w-full bg-[#1c1c1c] border border-[#444444] pl-3 pr-8 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-[#C8102E]"
+                        />
+                        <ExternalLink className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#888888] pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Button Label & Collection Name */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                          Button CTA Text
+                        </label>
+                        <input
+                          type="text"
+                          value={editProductCtaText}
+                          onChange={(e) => setEditProductCtaText(e.target.value)}
+                          placeholder="Shop on Shopify"
+                          className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                          Collection Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editProductCollection}
+                          onChange={(e) => setEditProductCollection(e.target.value)}
+                          placeholder="Garage Apparel & Gear"
+                          className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Campaign Description / Product Copy */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Campaign Copy / Product Details
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        placeholder="Description of the apparel item, materials, fit, and garage styling..."
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E] leading-relaxed resize-none"
+                      />
+                    </div>
+
+                    {/* Optional Tagged Vehicle for Sponsor post */}
+                    <div>
+                      <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa] flex items-center gap-1.5 mb-1.5">
+                        <Car className="w-3.5 h-3.5 text-[#C8102E]" />
+                        <span>Featured Build / Tagged Vehicle (Optional)</span>
+                      </label>
+                      <select
+                        value={editVehicleId}
+                        onChange={(e) => setEditVehicleId(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      >
+                        <option value="">None / Official GASCANCO Merch</option>
+                        {userVehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.year} {v.make} {v.model} {v.trim ? `• ${v.trim}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ) : (
+                  /* ========================================================
+                     STANDARD COMMUNITY POST APPLICABLE FIELDS
+                     ======================================================== */
+                  <div className="space-y-3.5">
+                    {/* Post Title (Optional Headline) */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Post Title / Topic (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="e.g. Brake pad compound recommendations for 20-min track sessions?"
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    {/* Category Selector */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1">
+                        Category
+                      </label>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {['General Discussion', 'Question / Advice', 'Spotted', 'Shop Talk', 'Track Report'].map((cat) => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setEditCategory(cat)}
+                            className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider transition-colors cursor-pointer border ${
+                              editCategory === cat
+                                ? 'bg-[#C8102E] text-white border-[#C8102E] font-bold'
+                                : 'bg-[#222225] text-[#888888] border-[#333336] hover:text-white'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        placeholder="Category"
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    {/* Tag Vehicle */}
+                    <div>
+                      <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa] flex items-center gap-1.5 mb-1.5">
+                        <Car className="w-3.5 h-3.5 text-[#C8102E]" />
+                        <span>Tag Vehicle</span>
+                      </label>
+                      <select
+                        value={editVehicleId}
+                        onChange={(e) => setEditVehicleId(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      >
+                        <option value="">None / No Vehicle Tagged</option>
+                        {userVehicles.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.year} {v.make} {v.model} {v.trim ? `• ${v.trim}` : ''} {v.nickname ? `("${v.nickname}")` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Post Content */}
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Post Content *
+                      </label>
+                      <textarea
+                        rows={3}
+                        required
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        placeholder="Share updates, wrenching logs, or YouTube/website links..."
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E] leading-relaxed resize-none"
+                      />
+                    </div>
+
+                    {/* Live Link Preview */}
+                    {editLinkPreview && (
+                      <div className="bg-[#181818] border border-[#C8102E]/60 p-2 sm:p-2.5 space-y-1.5 relative animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-mono text-[#ff8080]">
+                            {editLinkPreview.type === 'youtube' ? (
+                              <>
+                                <Youtube className="w-3.5 h-3.5 text-[#FF0000]" />
+                                <span className="font-bold uppercase tracking-wider text-white text-[11px]">YouTube Video</span>
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="w-3.5 h-3.5 text-[#3b82f6]" />
+                                <span className="font-bold uppercase tracking-wider text-white text-[11px]">Website Link</span>
+                              </>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditDismissedUrl(editLinkPreview.url);
+                              setEditLinkPreview(null);
+                            }}
+                            className="text-[#888888] hover:text-white p-0.5 transition-colors cursor-pointer"
+                            title="Remove preview"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-[#202020] border border-[#333333] p-1.5">
+                          {editLinkPreview.image && (
+                            <div className="relative w-16 h-10 bg-black shrink-0 overflow-hidden border border-[#3d3d3d]">
+                              <img
+                                src={editLinkPreview.image}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-['Oswald'] font-bold text-white uppercase tracking-wider truncate">
+                              {editLinkPreview.title || editLinkPreview.domain}
+                            </div>
+                            <div className="text-[10px] font-mono text-[#888888] truncate">
+                              {editLinkPreview.domain || editLinkPreview.url}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Photos Management (Applies to both Sponsor Drops and Standard Posts) */}
+                <div className="space-y-1.5 pt-1 border-t border-[#333336]">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa] flex items-center gap-1.5">
                       <ImageIcon className="w-3.5 h-3.5 text-[#C8102E]" />
-                      <span>Attached Photos</span>
+                      <span>{editIsAdvertisement ? 'Product Photos / Drop Banners' : 'Attached Photos'}</span>
                     </label>
                     {editImages.length > 0 && (
                       <span className="text-[10px] font-mono text-[#4ade80]">
@@ -1787,7 +2088,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     onDragLeave={() => setIsEditDragOver(false)}
                     onDrop={handleEditDrop}
                     onClick={() => editFileInputRef.current?.click()}
-                    className={`border border-dashed p-2 text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    className={`border border-dashed p-3 text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       isEditDragOver
                         ? 'border-[#C8102E] bg-[#C8102E]/10'
                         : 'border-[#444444] hover:border-[#888888] bg-[#1a1a1a]'
@@ -1795,9 +2096,37 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   >
                     <Upload className="w-3.5 h-3.5 text-[#C8102E]" />
                     <span className="text-xs font-['Oswald'] font-bold uppercase tracking-wider text-white">
-                      {editImages.length > 0 ? 'Upload More Photos' : 'Upload Photos'}
+                      {editImages.length > 0 ? 'Upload More Photos' : (editIsAdvertisement ? 'Upload Product Photos' : 'Upload Photos')}
                     </span>
                   </div>
+
+                  {/* Quick Sample Photos for Sponsor Drops if empty */}
+                  {editIsAdvertisement && editImages.length === 0 && (
+                    <div className="flex gap-2 flex-wrap pt-1">
+                      <span className="text-[10px] font-mono text-[#888888] self-center">Sample Merch:</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditImages(['https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=1200&q=80'])}
+                        className="px-2 py-0.5 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                      >
+                        Hoodie
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditImages(['https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=1200&q=80'])}
+                        className="px-2 py-0.5 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                      >
+                        Tee
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditImages(['https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=1200&q=80'])}
+                        className="px-2 py-0.5 bg-[#242426] border border-[#38383a] text-[10px] font-mono text-[#cccccc] hover:text-white cursor-pointer"
+                      >
+                        Cap
+                      </button>
+                    </div>
+                  )}
 
                   {/* Current Images Grid */}
                   {editImages.length > 0 && (
@@ -1806,7 +2135,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         <div key={idx} className="group relative aspect-[4/3] bg-black border border-[#3d3d3d] overflow-hidden">
                           <img src={img} alt="" className="w-full h-full object-cover" />
                           <div className="absolute top-0.5 left-0.5 bg-black/80 text-[8px] font-mono px-1 text-white">
-                            #{idx + 1}
+                            {idx === 0 ? 'Primary' : `#${idx + 1}`}
                           </div>
                           <button
                             type="button"
@@ -1823,7 +2152,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 </div>
               </div>
 
-              {/* Modal Footer Actions: Pinned, strictly 1 horizontal row, NEVER stacked, NEVER off screen */}
+              {/* Modal Footer Actions: Pinned, strictly 1 horizontal row */}
               <div className="p-3 sm:px-5 sm:py-3.5 border-t border-[#333333] bg-[#181818] shrink-0">
                 <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full">
                   <button
@@ -1832,14 +2161,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-mono text-[#ef4444] hover:text-white bg-[#ef4444]/10 hover:bg-[#ef4444] border border-[#ef4444]/40 transition-colors cursor-pointer text-center"
                   >
                     <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Delete Post</span>
+                    <span className="truncate">{editIsAdvertisement ? 'Delete Drop' : 'Delete Post'}</span>
                   </button>
                   <button
                     type="submit"
                     className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer text-center shadow-xs"
                   >
                     <Check className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">Save Changes</span>
+                    <span className="truncate">{editIsAdvertisement ? 'Save Sponsor Drop' : 'Save Changes'}</span>
                   </button>
                 </div>
               </div>
