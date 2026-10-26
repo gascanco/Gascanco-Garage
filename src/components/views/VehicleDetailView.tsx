@@ -770,10 +770,6 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             {/* TAB: SPECS / TECHNICAL SHEET */}
             {activeTab === 'specs' && (
               <div className="space-y-6">
-                {/* On desktop, keep Story in Technical Sheet. On mobile, Story is inside 'About the Build' */}
-                <div className="hidden lg:block">
-                  {renderStorySection()}
-                </div>
                 {renderSpecsTable()}
               </div>
             )}
@@ -789,12 +785,10 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                 <div className="space-y-6 lg:hidden">
                   {renderOwnerSection()}
                   {renderCrewSection()}
-                  {renderStorySection()}
                   {renderMoreBuildsSection()}
                 </div>
                 {/* On desktop if about active, show Specs table */}
                 <div className="hidden lg:block space-y-6">
-                  {renderStorySection()}
                   {renderSpecsTable()}
                 </div>
               </div>
@@ -843,32 +837,37 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               </div>
             )}
 
-            {/* TAB: DISCUSSIONS (Full Threaded Conversation Thread) */}
+            {/* TAB: DISCUSSIONS (Full Threaded Conversation Thread & Builder Story/Notes) */}
             {activeTab === 'discussion' && (
-              <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
-                <div>
-                  <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
-                    Community Discussions & Build Notes
-                  </h3>
-                  <p className="text-xs text-[#888888] font-mono mt-0.5">
-                    Ask questions about parts, recommend setup tweaks, or connect with the builder.
-                  </p>
-                </div>
+              <div className="space-y-6">
+                {/* The Story Behind This Build / Builder Journal */}
+                {renderStorySection()}
 
-                <ThreadedComments
-                  postId={vehicle.id}
-                  postTitle={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                  postType="vehicle"
-                  comments={vehicleComments}
-                  currentUser={currentUser}
-                  onAddComment={onAddComment || (() => {})}
-                  onUpdateComment={onUpdateComment || (() => {})}
-                  onDeleteComment={onDeleteComment || (() => {})}
-                  onOpenLightbox={(img) => {
-                    setActiveLightboxImage(img);
-                    setLightboxOpen(true);
-                  }}
-                />
+                <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
+                  <div>
+                    <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+                      Community Discussions & Build Notes
+                    </h3>
+                    <p className="text-xs text-[#888888] font-mono mt-0.5">
+                      Ask questions about parts, recommend setup tweaks, or connect with the builder.
+                    </p>
+                  </div>
+
+                  <ThreadedComments
+                    postId={vehicle.id}
+                    postTitle={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                    postType="vehicle"
+                    comments={vehicleComments}
+                    currentUser={currentUser}
+                    onAddComment={onAddComment || (() => {})}
+                    onUpdateComment={onUpdateComment || (() => {})}
+                    onDeleteComment={onDeleteComment || (() => {})}
+                    onOpenLightbox={(img) => {
+                      setActiveLightboxImage(img);
+                      setLightboxOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             )}
           </div>

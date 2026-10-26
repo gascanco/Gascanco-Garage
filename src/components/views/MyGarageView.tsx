@@ -3,7 +3,7 @@ import { Vehicle, Owner, isHardAdmin } from '../../types/garage';
 import { VehicleCard } from '../cards/VehicleCard';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
 import { 
-  Plus, Wrench, MapPin, Edit3, Calendar, X, Check, Share2, ShieldCheck
+  Plus, Wrench, MapPin, Edit3, Calendar, X, Check, Share2, ShieldCheck, Copy, ExternalLink
 } from 'lucide-react';
 import { formatMemberSince, normalizeCityState, POPULAR_US_CITIES } from '../../utils/dateAndLocationUtils';
 
@@ -89,14 +89,43 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
     setIsEditProfileOpen(false);
   };
 
-  const handleShareGarage = () => {
-    const origin = window.location.origin + window.location.pathname;
-    const garageUrl = `${origin}?garage=${encodeURIComponent(currentUser.id)}`;
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  // Derived user first name and share copy
+  const userFirstName = (currentUser.name || '').trim().split(' ')[0] || 'User';
+  const shareMessage = `Check out ${userFirstName}'s Garage on Gascanco.`;
+  const garageShareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}?garage=${encodeURIComponent(currentUser.id)}`
+    : `https://gascanco.com/?garage=${encodeURIComponent(currentUser.id)}`;
+  const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(garageShareUrl)}&quote=${encodeURIComponent(shareMessage)}`;
+
+  const handleOpenShareModal = () => {
+    setIsShareModalOpen(true);
+  };
+
+  const handleCopyShareLink = () => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(garageUrl);
+      navigator.clipboard.writeText(`${shareMessage}\n${garageShareUrl}`);
     }
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2500);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2400);
+  };
+
+  const handleNativeDeviceShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${userFirstName}'s Garage | Gascanco`,
+          text: shareMessage,
+          url: garageShareUrl,
+        });
+      } catch {
+        handleCopyShareLink();
+      }
+    } else {
+      handleCopyShareLink();
+    }
   };
 
   return (
@@ -160,12 +189,12 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
               <div className="flex items-center gap-2.5 self-start md:self-end flex-wrap pt-2 md:pt-0">
                 <button
                   type="button"
-                  onClick={handleShareGarage}
-                  className="flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-[#303030] hover:bg-[#3d3d3d] text-white border border-[#444444] text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                  title="Copy Garage profile link"
+                  onClick={handleOpenShareModal}
+                  className="flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-[#303030] hover:bg-[#3d3d3d] text-white border border-[#444444] text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer group"
+                  title="Share Garage profile on Facebook and social media"
                 >
-                  {copiedLink ? <Check className="w-4 h-4 text-[#10b981]" /> : <Share2 className="w-4 h-4 text-[#aaaaaa]" />}
-                  <span>{copiedLink ? 'Copied' : 'Share'}</span>
+                  <Share2 className="w-4 h-4 text-[#C8102E] group-hover:scale-110 transition-transform" />
+                  <span>Share Garage</span>
                 </button>
 
                 <button
@@ -324,6 +353,98 @@ export const MyGarageView: React.FC<MyGarageViewProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* SOCIAL SHARE GARAGE MODAL */}
+        {isShareModalOpen && (
+          <div 
+            className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fade-in"
+            onClick={() => setIsShareModalOpen(false)}
+          >
+            <div 
+              className="relative w-full max-w-md border border-[#3e3e42] bg-[#222224] text-white shadow-2xl p-5 sm:p-6 my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#333336] mb-4">
+                <div className="flex items-center gap-2">
+                  <Share2 className="w-4 h-4 text-[#C8102E]" />
+                  <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wider text-white">
+                    Share {userFirstName}'s Garage
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsShareModalOpen(false)}
+                  className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Message Preview Box */}
+              <div className="p-3.5 bg-[#171719] border border-[#333336] mb-4">
+                <span className="block text-[10px] font-mono uppercase tracking-wider text-[#888888] mb-1">
+                  Share Message
+                </span>
+                <p className="font-['Oswald'] text-base sm:text-lg font-bold text-white tracking-wide leading-snug">
+                  "{shareMessage}"
+                </p>
+                <div className="mt-2 pt-2 border-t border-[#26262a] text-[11px] font-mono text-[#aaaaaa] truncate">
+                  {garageShareUrl}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-2.5">
+                {/* 1. Share on Facebook */}
+                <a
+                  href={facebookShareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2.5 py-3 px-4 bg-[#1877F2] hover:bg-[#166fe5] text-white font-['Oswald'] font-bold text-sm uppercase tracking-wider transition-all duration-150 active:scale-[0.98] shadow-sm"
+                >
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                  <span>Share on Facebook</span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                </a>
+
+                {/* 2. Copy Link & Formatted Message */}
+                <button
+                  type="button"
+                  onClick={handleCopyShareLink}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#2c2c30] hover:bg-[#38383e] border border-[#444448] text-white font-['Oswald'] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  {shareCopied ? (
+                    <>
+                      <Check className="w-4 h-4 text-[#10b981]" />
+                      <span className="text-[#10b981]">Copied to Clipboard!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 text-[#aaaaaa]" />
+                      <span>Copy Link & Message</span>
+                    </>
+                  )}
+                </button>
+
+                {/* 3. Native Device Share */}
+                {typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function' && (
+                  <button
+                    type="button"
+                    onClick={handleNativeDeviceShare}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[#232326] hover:bg-[#2c2c30] border border-[#38383c] text-[#cccccc] hover:text-white font-['Oswald'] font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4 text-[#C8102E]" />
+                    <span>More Share Options</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

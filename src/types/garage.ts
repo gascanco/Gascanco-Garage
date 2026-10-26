@@ -124,6 +124,8 @@ export type ActiveView =
   | { type: 'community-builds' }
   | { type: 'events' }
   | { type: 'event-detail'; eventId: string }
+  | { type: 'marketplace' }
+  | { type: 'marketplace-detail'; itemId: string }
   | { type: 'saved-builds' }
   | { type: 'discover' }
   | { type: 'vehicle-detail'; vehicleId: string }
@@ -265,5 +267,63 @@ export interface ActivityItem {
   isAdvertisement?: boolean;
   shopifyProduct?: CommunityPost['shopifyProduct'];
   pollData?: CommunityPoll;
+}
+
+export type MarketplaceVehicleType = 
+  | 'Car' 
+  | 'Truck' 
+  | 'RV' 
+  | 'Semi' 
+  | 'SXS / UTV' 
+  | 'Dirt Bike' 
+  | '4-Wheeler / ATV' 
+  | 'Other';
+
+export type MarketplacePartCategory = 
+  | 'Engine & Performance' 
+  | 'Suspension & Brakes' 
+  | 'Wheels & Tires' 
+  | 'Interior & Safety' 
+  | 'Exterior & Aero' 
+  | 'SXS & Powersports' 
+  | 'Tools & Garage Gear';
+
+export interface MarketplaceItem {
+  id: string;
+  itemType: 'vehicle' | 'part';
+  title: string;
+  price: number;
+  priceType: 'firm' | 'obo';
+  seller: Owner;
+  location: string;
+  description: string;
+  primaryImage: string;
+  images: string[];
+  status: 'active' | 'pending' | 'sold';
+  createdAt: string;
+  viewsCount: number;
+  featured?: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
+
+  // Vehicle-specific attributes
+  vehicleType?: MarketplaceVehicleType;
+  year?: number;
+  make?: string;
+  model?: string;
+  trim?: string;
+  mileageHours?: string;
+  transmission?: string;
+  drivetrain?: string;
+  titleStatus?: 'Clean' | 'Salvage' | 'Bill of Sale' | 'Missing';
+  vin?: string;
+
+  // Part-specific attributes
+  partCategory?: MarketplacePartCategory;
+  brand?: string;
+  partNumber?: string;
+  condition?: 'Brand New' | 'Like New' | 'Used - Good' | 'Core / Needs Rebuild';
+  fitmentNotes?: string;
+  shippingOption?: 'Local Pickup Only' | 'Willing to Ship' | 'Freight Available';
 }
 

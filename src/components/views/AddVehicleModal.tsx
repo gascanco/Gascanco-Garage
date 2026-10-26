@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Vehicle, VehicleCategory, Owner, BuildUpdate, 
-  GarageEvent, CommunityPost, isHardAdmin, CommunityPoll
+  GarageEvent, CommunityPost, isHardAdmin, CommunityPoll,
+  MarketplaceItem, MarketplaceVehicleType, MarketplacePartCategory
 } from '../../types/garage';
 import { normalizeCityState, POPULAR_US_CITIES } from '../../utils/dateAndLocationUtils';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
@@ -11,10 +12,10 @@ import {
   Clock, Tag, Flame, Plus, ChevronRight, Upload, Loader2, 
   Image as ImageIcon, RefreshCw, RotateCcw, AlertCircle, 
   Wand2, Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube,
-  ShoppingBag, ShieldCheck, BarChart3, Vote
+  ShoppingBag, ShieldCheck, BarChart3, Vote, Package
 } from 'lucide-react';
 
-export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll';
+export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll' | 'marketplace';
 
 interface AddVehicleModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ interface AddVehicleModalProps {
   onEventAdded?: (newEvent: GarageEvent) => void;
   onPostAdded?: (newPost: CommunityPost) => void;
   onPollAdded?: (newPoll: CommunityPoll) => void;
+  onMarketplaceItemAdded?: (newItem: MarketplaceItem) => void;
   initialMode?: AddModalMode;
 }
 
@@ -43,6 +45,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   onEventAdded,
   onPostAdded,
   onPollAdded,
+  onMarketplaceItemAdded,
   initialMode = 'select',
 }) => {
   const [mode, setMode] = useState<AddModalMode>(initialMode);
@@ -71,9 +74,21 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   const [isVehiclePhotoDragOver, setIsVehiclePhotoDragOver] = useState(false);
   const vehiclePhotoInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync mode and prepopulate vehicle data or user's location when modal opens
+  const prevIsOpenRef = useRef(false);
+  const prevEditingVehicleIdRef = useRef<string | null>(null);
+
+  // Sync mode and prepopulate vehicle data or user's location ONLY when modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    const isNowOpen = isOpen;
+    const wasOpen = prevIsOpenRef.current;
+    const currentEditingId = editingVehicle ? editingVehicle.id : null;
+    const wasEditingId = prevEditingVehicleIdRef.current;
+
+    prevIsOpenRef.current = isNowOpen;
+    prevEditingVehicleIdRef.current = currentEditingId;
+
+    // Only run initialization when modal opens or editing target changes, NEVER during active user typing or photo upload!
+    if (isNowOpen && (!wasOpen || currentEditingId !== wasEditingId)) {
       if (editingVehicle) {
         setMode('vehicle');
         setVehicleStep(1);
@@ -116,6 +131,15 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         setHorsepower('');
         setVehiclePhotos([]);
         setPrimaryPhotoIndex(0);
+
+        // Reset other modes safely upon fresh opening
+        setEventTitle('');
+        setEventDescription('');
+        setPostContent('');
+        setPostVehicleId('');
+        setPostImages([]);
+        setDetectedLinkPreview(null);
+        setDismissedUrl(null);
       }
     }
   }, [isOpen, editingVehicle, initialMode, currentUser.location]);
@@ -438,6 +462,138 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     handleCloseModal();
   };
 
+  // ----------------------------------------------------
+  // 7. PARTS BIN MARKETPLACE LISTING STATE
+  // ----------------------------------------------------
+  const [mktType, setMktType] = useState<'vehicle' | 'part'>('vehicle');
+  const [mktVehType, setMktVehType] = useState<MarketplaceVehicleType>('Car');
+  const [mktVehYear, setMktVehYear] = useState<number>(new Date().getFullYear());
+  const [mktVehMake, setMktVehMake] = useState('');
+  const [mktVehModel, setMktVehModel] = useState('');
+  const [mktVehTrim, setMktVehTrim] = useState('');
+  const [mktVehMileageHours, setMktVehMileageHours] = useState('');
+  const [mktVehTransmission, setMktVehTransmission] = useState('Manual');
+  const [mktVehDrivetrain, setMktVehDrivetrain] = useState('RWD');
+  const [mktVehTitleStatus, setMktVehTitleStatus] = useState<'Clean' | 'Salvage' | 'Bill of Sale'>('Clean');
+  const [mktVehVin, setMktVehVin] = useState('');
+
+  const [mktPartCategory, setMktPartCategory] = useState<MarketplacePartCategory>('Engine & Performance');
+  const [mktPartTitle, setMktPartTitle] = useState('');
+  const [mktPartBrand, setMktPartBrand] = useState('');
+  const [mktPartNumber, setMktPartNumber] = useState('');
+  const [mktPartCondition, setMktPartCondition] = useState<'Brand New' | 'Like New' | 'Used - Good' | 'Core / Needs Rebuild'>('Used - Good');
+  const [mktPartFitment, setMktPartFitment] = useState('');
+  const [mktPartShipping, setMktPartShipping] = useState<'Local Pickup Only' | 'Willing to Ship' | 'Freight Available'>('Local Pickup Only');
+
+  const [mktPrice, setMktPrice] = useState('');
+  const [mktPriceType, setMktPriceType] = useState<'firm' | 'obo'>('obo');
+  const [mktLocation, setMktLocation] = useState(currentUser.location || 'Costa Mesa, CA');
+  const [mktDescription, setMktDescription] = useState('');
+  const [mktPhotos, setMktPhotos] = useState<string[]>([]);
+  const [mktPrimaryPhotoIndex, setMktPrimaryPhotoIndex] = useState(0);
+  const [isMktPhotoDragOver, setIsMktPhotoDragOver] = useState(false);
+  const mktPhotoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAddMktPhotos = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const currentCount = mktPhotos.length;
+    const remainingSlots = 5 - currentCount;
+    if (remainingSlots <= 0) return;
+
+    const validFiles = Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .slice(0, remainingSlots);
+
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          const res = e.target.result;
+          setMktPhotos(prev => {
+            if (prev.length >= 5) return prev;
+            return [...prev, res];
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveMktPhoto = (indexToRemove: number) => {
+    setMktPhotos(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    if (mktPrimaryPhotoIndex === indexToRemove) {
+      setMktPrimaryPhotoIndex(0);
+    } else if (mktPrimaryPhotoIndex > indexToRemove) {
+      setMktPrimaryPhotoIndex(prev => prev - 1);
+    }
+  };
+
+  const handleMarketplaceSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPrice = parseFloat(mktPrice.replace(/[^0-9.]/g, '')) || 0;
+    
+    let title = '';
+    if (mktType === 'vehicle') {
+      title = `${mktVehYear} ${mktVehMake} ${mktVehModel}${mktVehTrim ? ' ' + mktVehTrim : ''}`.trim();
+      if (!mktVehMake.trim() || !mktVehModel.trim()) {
+        alert('Please specify the vehicle make and model.');
+        return;
+      }
+    } else {
+      title = mktPartTitle.trim();
+      if (!title) {
+        alert('Please enter a part name / title.');
+        return;
+      }
+    }
+
+    const defaultImg = mktType === 'vehicle' 
+      ? '/src/assets/images/tacoma_trd_pro_1791130486225.jpg' 
+      : 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=1200&q=80';
+    
+    const primaryImg = mktPhotos[mktPrimaryPhotoIndex] || mktPhotos[0] || defaultImg;
+    const allImgs = mktPhotos.length > 0 ? mktPhotos : [primaryImg];
+
+    const newItem: MarketplaceItem = {
+      id: `mkt-${Date.now()}`,
+      itemType: mktType,
+      title,
+      price: cleanPrice,
+      priceType: mktPriceType,
+      seller: currentUser,
+      location: mktLocation || currentUser.location || 'Costa Mesa, CA',
+      description: mktDescription.trim() || 'No description provided by seller.',
+      primaryImage: primaryImg,
+      images: allImgs,
+      status: 'active',
+      createdAt: 'Just now',
+      viewsCount: 1,
+      // Vehicle fields
+      vehicleType: mktType === 'vehicle' ? mktVehType : undefined,
+      year: mktType === 'vehicle' ? mktVehYear : undefined,
+      make: mktType === 'vehicle' ? mktVehMake : undefined,
+      model: mktType === 'vehicle' ? mktVehModel : undefined,
+      trim: mktType === 'vehicle' ? mktVehTrim : undefined,
+      mileageHours: mktType === 'vehicle' ? mktVehMileageHours : undefined,
+      transmission: mktType === 'vehicle' ? mktVehTransmission : undefined,
+      drivetrain: mktType === 'vehicle' ? mktVehDrivetrain : undefined,
+      titleStatus: mktType === 'vehicle' ? mktVehTitleStatus : undefined,
+      vin: mktType === 'vehicle' ? mktVehVin : undefined,
+      // Part fields
+      partCategory: mktType === 'part' ? mktPartCategory : undefined,
+      brand: mktType === 'part' ? mktPartBrand : undefined,
+      partNumber: mktType === 'part' ? mktPartNumber : undefined,
+      condition: mktType === 'part' ? mktPartCondition : undefined,
+      fitmentNotes: mktType === 'part' ? mktPartFitment : undefined,
+      shippingOption: mktType === 'part' ? mktPartShipping : undefined,
+    };
+
+    if (onMarketplaceItemAdded) {
+      onMarketplaceItemAdded(newItem);
+    }
+    handleCloseModal();
+  };
+
   // URL extraction helper
   const extractUrlFromText = (text: string): string | null => {
     const match = text.match(/https?:\/\/[^\s]+/i);
@@ -751,6 +907,19 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     setDismissedUrl(null);
     setVehiclePhotos([]);
     setPrimaryPhotoIndex(0);
+    setMktType('vehicle');
+    setMktVehMake('');
+    setMktVehModel('');
+    setMktVehTrim('');
+    setMktVehMileageHours('');
+    setMktPartTitle('');
+    setMktPartBrand('');
+    setMktPartNumber('');
+    setMktPartFitment('');
+    setMktPrice('');
+    setMktDescription('');
+    setMktPhotos([]);
+    setMktPrimaryPhotoIndex(0);
     onClose();
   };
 
@@ -786,6 +955,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               <h2 className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white">
                 {mode === 'event' && 'ADD AN EVENT'}
                 {mode === 'vehicle' && (editingVehicle ? 'EDIT VEHICLE' : 'ADD A VEHICLE')}
+                {mode === 'marketplace' && 'LIST IN PARTS BIN MARKETPLACE'}
                 {mode === 'post' && 'ADD A POST'}
                 {mode === 'advertisement' && 'CREATE SHOPIFY ADVERTISEMENT'}
                 {mode === 'poll' && 'CREATE COMMUNITY POLL'}
@@ -863,7 +1033,29 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
               </button>
 
-              {/* Option 3: Add a Post */}
+              {/* Option 3: Sell in Parts Bin (Marketplace) */}
+              <button
+                type="button"
+                onClick={() => setMode('marketplace')}
+                className="group w-full flex items-center justify-between p-3.5 sm:p-5 bg-[#282828] hover:bg-[#303030] border border-[#3d3d3d] hover:border-[#C8102E] transition-all cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#C8102E] group-hover:text-white transition-colors">
+                    <Tag className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors block">
+                      Sell in Parts Bin
+                    </span>
+                    <span className="text-[11px] font-mono text-[#888888]">
+                      List a Vehicle or Automotive Part for sale
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
+              </button>
+
+              {/* Option 4: Add a Post */}
               <button
                 type="button"
                 onClick={() => setMode('post')}
@@ -928,6 +1120,464 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* ========================================================
+            MODE: PARTS BIN MARKETPLACE LISTING
+           ======================================================== */}
+        {mode === 'marketplace' && (
+          <form onSubmit={handleMarketplaceSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+              
+              {/* Type Switcher: Vehicle vs Part */}
+              <div className="bg-[#18181a] border border-[#38383a] p-3 sm:p-4">
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-2 font-bold">
+                  What are you listing in the Parts Bin?
+                </label>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setMktType('vehicle')}
+                    className={`flex items-center justify-center gap-2 p-3 text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      mktType === 'vehicle'
+                        ? 'bg-[#C8102E] text-white border-[#C8102E] shadow-sm'
+                        : 'bg-[#222224] text-[#aaaaaa] border-[#38383a] hover:text-white hover:border-[#555555]'
+                    }`}
+                  >
+                    <Car className="w-4 h-4" />
+                    <span>Complete Vehicle</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMktType('part')}
+                    className={`flex items-center justify-center gap-2 p-3 text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      mktType === 'part'
+                        ? 'bg-[#C8102E] text-white border-[#C8102E] shadow-sm'
+                        : 'bg-[#222224] text-[#aaaaaa] border-[#38383a] hover:text-white hover:border-[#555555]'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    <span>Part or Accessory</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* VEHICLE FORM FIELDS */}
+              {mktType === 'vehicle' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Vehicle Type *
+                      </label>
+                      <select
+                        value={mktVehType}
+                        onChange={(e) => setMktVehType(e.target.value as MarketplaceVehicleType)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      >
+                        <option value="Car">Car</option>
+                        <option value="Truck">Truck</option>
+                        <option value="RV">RV / Camper</option>
+                        <option value="Semi">Semi / Heavy Hauler</option>
+                        <option value="SXS / UTV">SXS / UTV (Side-by-Side)</option>
+                        <option value="Dirt Bike">Dirt Bike / Enduro</option>
+                        <option value="4-Wheeler / ATV">4-Wheeler / ATV</option>
+                        <option value="Other">Other Powersports</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Model Year *
+                      </label>
+                      <input
+                        type="number"
+                        min="1920"
+                        max={new Date().getFullYear() + 1}
+                        value={mktVehYear}
+                        onChange={(e) => setMktVehYear(parseInt(e.target.value) || new Date().getFullYear())}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Make *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Can-Am, Ford, KTM"
+                        value={mktVehMake}
+                        onChange={(e) => setMktVehMake(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Model *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Maverick X3, F-250, 300 XC-W"
+                        value={mktVehModel}
+                        onChange={(e) => setMktVehModel(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Trim / Package
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Turbo RR, XLT 7.3L"
+                        value={mktVehTrim}
+                        onChange={(e) => setMktVehTrim(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Mileage or Operating Hours
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 48 Hours or 62,000 Miles"
+                        value={mktVehMileageHours}
+                        onChange={(e) => setMktVehMileageHours(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Transmission
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 6-Speed Manual, Automatic, CVT"
+                        value={mktVehTransmission}
+                        onChange={(e) => setMktVehTransmission(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Title Status
+                      </label>
+                      <select
+                        value={mktVehTitleStatus}
+                        onChange={(e) => setMktVehTitleStatus(e.target.value as any)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      >
+                        <option value="Clean">Clean Title in Hand</option>
+                        <option value="Salvage">Salvage / Rebuilt</option>
+                        <option value="Bill of Sale">Bill of Sale Only</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PART FORM FIELDS */}
+              {mktType === 'part' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Part Category *
+                      </label>
+                      <select
+                        value={mktPartCategory}
+                        onChange={(e) => setMktPartCategory(e.target.value as MarketplacePartCategory)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      >
+                        <option value="Engine & Performance">Engine & Performance</option>
+                        <option value="Suspension & Brakes">Suspension & Brakes</option>
+                        <option value="Wheels & Tires">Wheels & Tires</option>
+                        <option value="Interior & Safety">Interior & Safety</option>
+                        <option value="Exterior & Aero">Exterior & Aero</option>
+                        <option value="SXS & Powersports">SXS & Powersports</option>
+                        <option value="Tools & Garage Gear">Tools & Garage Gear</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Condition *
+                      </label>
+                      <select
+                        value={mktPartCondition}
+                        onChange={(e) => setMktPartCondition(e.target.value as any)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      >
+                        <option value="Brand New">Brand New (Unopened / Never Installed)</option>
+                        <option value="Like New">Like New (Mint / Low Use)</option>
+                        <option value="Used - Good">Used - Good (Normal Wear, Works 100%)</option>
+                        <option value="Core / Needs Rebuild">Core / Needs Rebuild</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                      Part Title / Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Garrett G30-770 Turbocharger Kit, Method Beadlock Wheels 15x7"
+                      value={mktPartTitle}
+                      onChange={(e) => setMktPartTitle(e.target.value)}
+                      className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Brand / Manufacturer
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Garrett, King Shocks, Sparco, Miller"
+                        value={mktPartBrand}
+                        onChange={(e) => setMktPartBrand(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Part Number / SKU (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 880697-5002S"
+                        value={mktPartNumber}
+                        onChange={(e) => setMktPartNumber(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Vehicle Fitment Notes
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 2005-2023 Tacoma 4x4, Can-Am Maverick X3"
+                        value={mktPartFitment}
+                        onChange={(e) => setMktPartFitment(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                        Shipping / Pickup
+                      </label>
+                      <select
+                        value={mktPartShipping}
+                        onChange={(e) => setMktPartShipping(e.target.value as any)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                      >
+                        <option value="Local Pickup Only">Local Pickup Only</option>
+                        <option value="Willing to Ship">Willing to Ship (Buyer Pays)</option>
+                        <option value="Freight Available">Freight Available (Pallet/Crate)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* COMMON PRICING & LOCATION */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-[#38383a]">
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                    Asking Price ($ USD) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 18500"
+                    value={mktPrice}
+                    onChange={(e) => setMktPrice(e.target.value)}
+                    className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono font-bold"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                    Price Terms
+                  </label>
+                  <select
+                    value={mktPriceType}
+                    onChange={(e) => setMktPriceType(e.target.value as any)}
+                    className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                  >
+                    <option value="obo">OBO (Or Best Offer)</option>
+                    <option value="firm">Firm (No Trades / Lowballs)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                    Item Location *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Costa Mesa, CA"
+                    value={mktLocation}
+                    onChange={(e) => setMktLocation(e.target.value)}
+                    className="w-full bg-[#1c1c1c] border border-[#444444] px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+                  Detailed Description & Seller Notes *
+                </label>
+                <textarea
+                  rows={4}
+                  placeholder={mktType === 'vehicle' ? "Describe build history, maintenance, modifications, included spares, and any known issues..." : "Describe condition, wear, reason for selling, and what hardware/brackets are included..."}
+                  value={mktDescription}
+                  onChange={(e) => setMktDescription(e.target.value)}
+                  className="w-full bg-[#1c1c1c] border border-[#444444] p-3 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                  required
+                />
+              </div>
+
+              {/* PHOTO UPLOADS (Up to 5) */}
+              <div className="pt-2 border-t border-[#38383a]">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa]">
+                    Item Photos (Up to 5)
+                  </label>
+                  <span className="text-[11px] font-mono text-[#888888]">
+                    {mktPhotos.length} / 5 photos
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                  {mktPhotos.length < 5 && (
+                    <div className={mktPhotos.length > 0 ? "sm:col-span-5" : "sm:col-span-12"}>
+                      <input
+                        ref={mktPhotoInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => {
+                          handleAddMktPhotos(e.target.files);
+                          if (e.target) e.target.value = '';
+                        }}
+                        className="hidden"
+                      />
+                      <div
+                        onClick={() => mktPhotoInputRef.current?.click()}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsMktPhotoDragOver(true);
+                        }}
+                        onDragLeave={() => setIsMktPhotoDragOver(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsMktPhotoDragOver(false);
+                          handleAddMktPhotos(e.dataTransfer.files);
+                        }}
+                        className={`border-2 border-dashed p-5 text-center cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-all ${
+                          isMktPhotoDragOver
+                            ? 'border-[#C8102E] bg-[#C8102E]/10'
+                            : 'border-[#444444] hover:border-[#C8102E] bg-[#1a1a1a] hover:bg-[#202020]'
+                        }`}
+                      >
+                        <Upload className="w-5 h-5 text-[#C8102E]" />
+                        <span className="text-xs font-['Oswald'] font-bold uppercase text-white">
+                          Upload Photos
+                        </span>
+                        <span className="text-[10px] font-mono text-[#888888]">
+                          Drop files or click to browse
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thumbnail Previews */}
+                  {mktPhotos.length > 0 && (
+                    <div className={mktPhotos.length < 5 ? "sm:col-span-7" : "sm:col-span-12"}>
+                      <div className="grid grid-cols-3 gap-2">
+                        {mktPhotos.map((photo, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setMktPrimaryPhotoIndex(idx)}
+                            className={`relative aspect-[4/3] bg-black border-2 overflow-hidden cursor-pointer ${
+                              mktPrimaryPhotoIndex === idx ? 'border-[#C8102E]' : 'border-[#444444]'
+                            }`}
+                          >
+                            <img src={photo} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                            {mktPrimaryPhotoIndex === idx && (
+                              <span className="absolute top-1 left-1 bg-[#C8102E] text-white text-[8px] font-['Oswald'] px-1 font-bold">
+                                PRIMARY
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMktPhoto(idx);
+                              }}
+                              className="absolute top-1 right-1 bg-black/80 hover:bg-[#C8102E] text-white p-1 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Bottom Form Actions */}
+            <div className="p-3 sm:px-6 sm:py-4 border-t border-[#383838] bg-[#282828] shrink-0 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setMode('select')}
+                className="px-4 py-2 text-xs font-mono text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-white transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Select</span>
+              </button>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2 shadow-md"
+              >
+                <Tag className="w-4 h-4" />
+                <span>Publish to Parts Bin</span>
+              </button>
+            </div>
+          </form>
         )}
 
         {/* ========================================================

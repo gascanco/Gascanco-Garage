@@ -6,11 +6,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Vehicle, ActiveView, Owner, GarageEvent, CommunityPost, 
-  BuildUpdate, PostComment, SpotlightConfig, CommunityPoll 
+  BuildUpdate, PostComment, SpotlightConfig, CommunityPoll, MarketplaceItem 
 } from './types/garage';
 import { 
   INITIAL_VEHICLES, CURRENT_MOCK_USER, INITIAL_EVENTS, 
-  INITIAL_POSTS, INITIAL_COMMENTS, INITIAL_SPOTLIGHT_CONFIG, INITIAL_POLLS 
+  INITIAL_POSTS, INITIAL_COMMENTS, INITIAL_SPOTLIGHT_CONFIG, INITIAL_POLLS,
+  INITIAL_MARKETPLACE_ITEMS 
 } from './data/mockGarageData';
 import { MobileBottomNav } from './components/navigation/MobileBottomNav';
 import { DiscoverView } from './components/views/DiscoverView';
@@ -20,9 +21,11 @@ import { MyGarageView } from './components/views/MyGarageView';
 import { SavedBuildsView } from './components/views/SavedBuildsView';
 import { EventsView } from './components/views/EventsView';
 import { EventDetailView } from './components/views/EventDetailView';
+import { MarketplaceView } from './components/views/MarketplaceView';
 import { AddVehicleModal } from './components/views/AddVehicleModal';
 import { SpotlightManagerModal } from './components/modals/SpotlightManagerModal';
-import { CheckCircle2 } from 'lucide-react';
+import { LoveYouGesture } from './components/common/LoveYouGesture';
+import { CheckCircle2, ThumbsDown } from 'lucide-react';
 
 export default function App() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
@@ -41,13 +44,30 @@ export default function App() {
   const [dislikedVehicleIds, setDislikedVehicleIds] = useState<Set<string>>(new Set());
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const [addModalInitialMode, setAddModalInitialMode] = useState<'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll'>('select');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [addModalInitialMode, setAddModalInitialMode] = useState<'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll' | 'marketplace'>('select');
+  const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>(INITIAL_MARKETPLACE_ITEMS);
+  interface ToastData {
+    message: string;
+    iconType?: 'kickass' | 'not_cool' | 'check';
+  }
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   const handleOpenAddVehicle = () => {
     setEditingVehicle(null);
     setAddModalInitialMode('vehicle');
     setIsAddVehicleOpen(true);
+  };
+
+  const handleOpenAddMarketplace = () => {
+    setEditingVehicle(null);
+    setAddModalInitialMode('marketplace');
+    setIsAddVehicleOpen(true);
+  };
+
+  const handleMarketplaceItemAdded = (newItem: MarketplaceItem) => {
+    setMarketplaceItems(prev => [newItem, ...prev]);
+    showToast(`Published "${newItem.title}" to Parts Bin!`);
+    setActiveView({ type: 'marketplace' });
   };
 
   const handleOpenEditVehicle = (vehicleId: string) => {
@@ -76,20 +96,20 @@ export default function App() {
     }
   }, [currentUser.id]);
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
+  const showToast = (msg: string, iconType: 'kickass' | 'not_cool' | 'check' = 'check') => {
+    setToast({ message: msg, iconType });
     setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
+      setToast(null);
+    }, 2800);
   };
 
-  // Like Toggle (Love-you gesture 🤟)
+  // Like Toggle (Love-you gesture 🤟) -> "Kickass"
   const handleLikeToggle = (vehicleId: string) => {
     setLikedVehicleIds(prev => {
       const next = new Set(prev);
       if (next.has(vehicleId)) {
         next.delete(vehicleId);
-        showToast("Removed reaction");
+        showToast("Removed reaction", 'check');
       } else {
         next.add(vehicleId);
         // Clear dislike if present
@@ -98,19 +118,19 @@ export default function App() {
           nextDis.delete(vehicleId);
           return nextDis;
         });
-        showToast("Loved this build! 🤟");
+        showToast("Kickass", 'kickass');
       }
       return next;
     });
   };
 
-  // Dislike Toggle (Thumbs-down 👎)
+  // Dislike Toggle (Thumbs-down 👎) -> "Not Cool"
   const handleDislikeToggle = (vehicleId: string) => {
     setDislikedVehicleIds(prev => {
       const next = new Set(prev);
       if (next.has(vehicleId)) {
         next.delete(vehicleId);
-        showToast("Removed dislike");
+        showToast("Removed reaction", 'check');
       } else {
         next.add(vehicleId);
         // Clear like if present
@@ -119,7 +139,7 @@ export default function App() {
           nextLike.delete(vehicleId);
           return nextLike;
         });
-        showToast("Marked thumbs-down");
+        showToast("Not Cool", 'not_cool');
       }
       return next;
     });
@@ -493,6 +513,18 @@ export default function App() {
           />
         )}
 
+        {/* Parts Bin Marketplace View */}
+        {activeView.type === 'marketplace' && (
+          <MarketplaceView
+            items={marketplaceItems}
+            currentUser={currentUser}
+            onOpenAddListing={handleOpenAddMarketplace}
+            onSelectItem={(itemId) => {
+              // Future item detail modal / view
+            }}
+          />
+        )}
+
         {/* 3. Combined My Garage & Profile Hub */}
         {(activeView.type === 'my-garage' || activeView.type === 'user-profile') && (
           <MyGarageView
@@ -544,6 +576,7 @@ export default function App() {
         onEventAdded={handleEventAdded}
         onPostAdded={handlePostAdded}
         onPollAdded={handleCreatePoll}
+        onMarketplaceItemAdded={handleMarketplaceItemAdded}
         initialMode={addModalInitialMode}
       />
 
@@ -557,10 +590,16 @@ export default function App() {
       />
 
       {/* Action Toast Feedback - Zero radius */}
-      {toastMessage && (
-        <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 bg-[#202020] text-white px-4 py-2.5 border border-[#444444] shadow-2xl flex items-center gap-2 text-xs font-mono animate-fade-in">
-          <CheckCircle2 className="w-4 h-4 text-[#C8102E]" />
-          <span>{toastMessage}</span>
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 bg-[#1e1e20] text-white px-4 py-2.5 border border-[#3e3e42] shadow-2xl flex items-center gap-2.5 text-xs font-mono animate-fade-in">
+          {toast.iconType === 'kickass' ? (
+            <LoveYouGesture className="w-4 h-4 text-[#C8102E]" filled={true} />
+          ) : toast.iconType === 'not_cool' ? (
+            <ThumbsDown className="w-4 h-4 text-[#ff4d4d] fill-current" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-[#C8102E]" />
+          )}
+          <span className="font-['Oswald'] text-sm uppercase tracking-wider font-bold">{toast.message}</span>
         </div>
       )}
     </div>

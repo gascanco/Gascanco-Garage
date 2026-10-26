@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GascancoLogo } from '../common/GascancoLogo';
 import { SlammedTruckIcon } from '../common/SlammedTruckIcon';
 import { ActiveView, Owner, isHardAdmin } from '../../types/garage';
-import { Plus, ShoppingBag, User, Wrench, Menu, X, Sparkles, ChevronDown, ShieldCheck } from 'lucide-react';
+import { Plus, ShoppingBag, User, Wrench, Menu, X, Sparkles, ChevronDown, ShieldCheck, Tag } from 'lucide-react';
 
 interface HeaderProps {
   activeView: ActiveView;
@@ -26,6 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const isActivityActive = activeView.type === 'activity-feed';
   const isGarageActive = activeView.type === 'community-builds' || activeView.type === 'discover' || activeView.type === 'vehicle-detail';
+  const isMarketplaceActive = activeView.type === 'marketplace' || activeView.type === 'marketplace-detail';
   const isMyGarageActive = activeView.type === 'my-garage';
   const isAdmin = isHardAdmin(currentUser);
 
@@ -88,6 +89,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <SlammedTruckIcon className="w-4 h-4" />
             <span>Community Builds</span>
+          </button>
+
+          <button
+            onClick={() => setActiveView({ type: 'marketplace' })}
+            className={`py-1 transition-colors relative flex items-center gap-1.5 ${
+              isMarketplaceActive
+                ? 'text-white font-bold border-b-2 border-[#C8102E]'
+                : 'text-[#bbbbbb] hover:text-white'
+            }`}
+          >
+            <Tag className="w-4 h-4 text-[#C8102E]" />
+            <span>Parts Bin</span>
           </button>
 
           <button
@@ -201,6 +214,16 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <SlammedTruckIcon className="w-5 h-5 text-[#C8102E] shrink-0" />
             <span>The [Garage] Builds</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveView({ type: 'marketplace' });
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left px-3 py-2.5 rounded font-['Oswald'] text-lg font-bold uppercase text-white hover:bg-[#2d2d2d] flex items-center gap-2.5"
+          >
+            <Tag className="w-5 h-5 text-[#C8102E] shrink-0" />
+            <span>Parts Bin (Marketplace)</span>
           </button>
           <button
             onClick={() => {

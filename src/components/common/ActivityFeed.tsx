@@ -472,8 +472,9 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     // 4. Vehicle Registrations & Detailed Build Updates (Ensuring up to 100 rich current cards)
     vehicles.forEach((veh, vIndex) => {
       const { timestamp, display } = parseDateToTimestamp(veh.createdAt, vIndex * 3 + 2);
-      const ownerFirstName = (veh.owner.name || '').trim().split(' ')[0] || 'User';
-      const vehTitle = `${veh.year} ${veh.make} ${veh.model}`.trim();
+      const ownerFirstName = (veh.owner?.name || '').trim().split(' ')[0] || 'User';
+      const vehInfoParts = [veh.year, veh.make, veh.model, veh.trim].filter(Boolean);
+      const vehTitle = vehInfoParts.length > 0 ? vehInfoParts.join(' ').trim() : `${veh.year} ${veh.make} ${veh.model}`.trim();
       list.push({
         id: `act-veh-${veh.id}`,
         type: 'build_update',
@@ -483,7 +484,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         vehicleName: vehTitle,
         owner: veh.owner,
         title: vehTitle,
-        description: `${ownerFirstName} just added a ${vehTitle} to their garage.`,
+        description: `${ownerFirstName} just added a ${vehTitle} to his garage.`,
         badge: '',
         photoUrl: veh.primaryImage,
         images: veh.galleryImages,
@@ -1225,7 +1226,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   <div className="flex flex-col">
                     <div className="p-4 sm:p-5 pb-3 sm:pb-3.5">
                       <p className="text-base sm:text-lg md:text-xl font-['Oswald'] font-bold text-white uppercase tracking-wide leading-snug">
-                        <span className="text-[#C8102E]">{(act.owner.name || '').trim().split(' ')[0]}</span> just added a <span className="text-white">{act.vehicleName || act.title}</span> to their garage.
+                        <span className="text-[#C8102E]">{(act.owner?.name || '').trim().split(' ')[0] || 'User'}</span> just added a <span className="text-white">{act.vehicleName || act.title}</span> to his garage.
                       </p>
                     </div>
 

@@ -220,9 +220,9 @@ export const EventsView: React.FC<EventsViewProps> = ({
         )}
 
         {/* ========================================================
-            2. CATEGORIES & LOCATION FILTER TOOLBAR (Exact match with Builds page)
+            2. CATEGORIES & LOCATION FILTER TOOLBAR (Exact match with Builds and Live)
            ======================================================== */}
-        <div className="bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
+        <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
             {/* Category Dropdown */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
@@ -254,7 +254,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
               </div>
             </div>
 
-            {/* Location Selector */}
+            {/* Location Selector - Standard Card Width on Mobile */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
               <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
                 <MapPin className="w-4 h-4 text-[#C8102E] shrink-0" />
@@ -282,61 +282,50 @@ export const EventsView: React.FC<EventsViewProps> = ({
                   </button>
                 )}
               </div>
-            </div>
 
-            {/* Search Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
-                isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
-              }`}
-              title="Toggle keyword search"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            {hasActiveFilters && (
+              {/* Search Toggle Button */}
               <button
                 type="button"
-                onClick={clearFilters}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2.5 bg-[#1e1e20] hover:bg-[#28282b] text-xs font-mono text-[#bbbbbb] hover:text-white border border-[#38383a] transition-colors cursor-pointer shrink-0"
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
+                  isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
+                }`}
+                title="Toggle keyword search"
               >
-                <X className="w-3.5 h-3.5 text-[#C8102E]" />
-                <span>Reset</span>
+                <Search className="w-4 h-4" />
               </button>
-            )}
 
-            {/* Single Add Event Button */}
-            <button
-              type="button"
-              onClick={onOpenAddEvent}
-              className="col-span-2 sm:col-span-1 sm:ml-auto flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-3 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-150 active:scale-[0.98] cursor-pointer shadow-sm shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Event</span>
-            </button>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-xs sm:text-sm text-[#C8102E] hover:underline font-mono whitespace-nowrap cursor-pointer px-2 py-1 hidden sm:inline-block font-bold"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Expandable Search Input Row */}
-          {(isSearchOpen || searchQuery) && (
-            <div className="mt-3 pt-3 border-t border-[#38383a] flex items-center gap-2">
-              <Search className="w-4 h-4 text-[#C8102E] shrink-0" />
+          {/* Optional Keyword Search Row if opened */}
+          {isSearchOpen && (
+            <div className="mt-3 pt-3 border-t border-[#333333] relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search meets by name, venue, organizer, or city..."
-                className="w-full bg-transparent text-xs sm:text-sm font-mono text-white placeholder-[#777777] focus:outline-none"
-                autoFocus
+                className="w-full bg-[#171719] border border-[#38383a] pl-9 pr-8 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-[#C8102E] font-mono"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="p-1 text-[#888888] hover:text-white transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-white cursor-pointer"
+                  title="Clear search text"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -436,15 +425,25 @@ export const EventsView: React.FC<EventsViewProps> = ({
             <p className="text-xs text-[#aaaaaa] mt-1">
               Try clearing filters or search to view all upcoming automotive events.
             </p>
-            {hasActiveFilters && (
+            <div className="mt-5 flex justify-center gap-3">
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#333333] hover:bg-[#444444] text-white transition-colors cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
               <button
                 type="button"
-                onClick={clearFilters}
-                className="mt-4 px-4 py-2 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#C8102E] hover:bg-[#e01334] text-white transition-colors cursor-pointer"
+                onClick={onOpenAddEvent}
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-['Oswald'] font-bold uppercase tracking-wider bg-[#C8102E] hover:bg-[#e01334] text-white transition-colors cursor-pointer"
               >
-                Reset Filters
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Event</span>
               </button>
-            )}
+            </div>
           </div>
         )}
       </div>
