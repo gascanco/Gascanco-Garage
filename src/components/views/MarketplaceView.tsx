@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { MarketplaceItem, Owner } from '../../types/garage';
 import { MarketplaceCard } from '../cards/MarketplaceCard';
 import { 
-  Search, X, Plus, MapPin, Layers, Tag, Car, Package, 
-  Sparkles, Filter, Mail, CheckCircle2, Send, MessageSquare 
+  Search, X, Plus, MapPin, Layers, Tag, Mail, CheckCircle2, Send
 } from 'lucide-react';
 
 interface MarketplaceViewProps {
@@ -19,12 +18,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   onOpenAddListing,
   onSelectItem,
 }) => {
-  // Tab State: 'vehicles' vs 'parts'
-  const [activeTab, setActiveTab] = useState<'vehicles' | 'parts'>('vehicles');
-
-  // Filters State
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedCondition, setSelectedCondition] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
   const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -34,40 +28,35 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   const [inquiryMessage, setInquiryMessage] = useState('Hi, is this still available? Interested in purchasing.');
   const [inquirySent, setInquirySent] = useState(false);
 
-  // Counts for tabs
-  const vehicleItems = useMemo(() => items.filter(i => i.itemType === 'vehicle'), [items]);
-  const partItems = useMemo(() => items.filter(i => i.itemType === 'part'), [items]);
+  // Spotlight Item: Featured or first active listing in Parts Bin (Matching Builds Page Spotlight)
+  const spotlightItem = useMemo(() => {
+    const featured = items.find(i => i.featured && i.status === 'active');
+    if (featured) return featured;
+    return items[0] || null;
+  }, [items]);
 
-  // Current tab items
-  const tabItems = activeTab === 'vehicles' ? vehicleItems : partItems;
-
-  // Dynamic available categories for the active tab
+  // Dynamic Categories list across Vehicles and Parts
   const availableCategories = useMemo(() => {
-    if (activeTab === 'vehicles') {
-      return [
-        'All',
-        'Car',
-        'Truck',
-        'RV',
-        'Semi',
-        'SXS / UTV',
-        'Dirt Bike',
-        '4-Wheeler / ATV',
-        'Other',
-      ];
-    } else {
-      return [
-        'All',
-        'Engine & Performance',
-        'Suspension & Brakes',
-        'Wheels & Tires',
-        'Interior & Safety',
-        'Exterior & Aero',
-        'SXS & Powersports',
-        'Tools & Garage Gear',
-      ];
-    }
-  }, [activeTab]);
+    return [
+      'All Categories',
+      'All Vehicles For Sale',
+      'Cars For Sale',
+      'Trucks & 4x4s',
+      'SXS & UTVs',
+      'Dirt Bikes & Motos',
+      '4-Wheelers & ATVs',
+      'Semis & Heavy Duty',
+      'RVs & Haulers',
+      'All Parts & Accessories',
+      'Engine & Performance',
+      'Suspension & Brakes',
+      'Wheels & Tires',
+      'Interior & Safety',
+      'Exterior & Aero',
+      'SXS & Powersports Parts',
+      'Tools & Garage Gear',
+    ];
+  }, []);
 
   // Dynamic Locations list
   const availableLocations = useMemo(() => {
@@ -78,41 +67,38 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
     return ['All Locations', ...Array.from(set).sort()];
   }, [items]);
 
-  // Spotlight Item: Featured or highest viewed item of current tab
-  const spotlightItem = useMemo(() => {
-    const featured = tabItems.find(i => i.featured && i.status === 'active');
-    if (featured) return featured;
-    return tabItems[0] || null;
-  }, [tabItems]);
-
-  // Filtered Items
+  // Filtered listings
   const filteredItems = useMemo(() => {
-    return tabItems.filter(item => {
-      // Category filter
-      if (selectedCategory !== 'All') {
-        if (activeTab === 'vehicles' && item.vehicleType !== selectedCategory) {
-          return false;
-        }
-        if (activeTab === 'parts' && item.partCategory !== selectedCategory) {
-          return false;
-        }
+    return items.filter(item => {
+      // 1. Category Filter
+      if (selectedCategory !== 'All Categories') {
+        if (selectedCategory === 'All Vehicles For Sale' && item.itemType !== 'vehicle') return false;
+        if (selectedCategory === 'Cars For Sale' && (item.itemType !== 'vehicle' || item.vehicleType !== 'Car')) return false;
+        if (selectedCategory === 'Trucks & 4x4s' && (item.itemType !== 'vehicle' || item.vehicleType !== 'Truck')) return false;
+        if (selectedCategory === 'SXS & UTVs' && (item.itemType !== 'vehicle' || !item.vehicleType?.includes('SXS'))) return false;
+        if (selectedCategory === 'Dirt Bikes & Motos' && (item.itemType !== 'vehicle' || !item.vehicleType?.includes('Dirt Bike'))) return false;
+        if (selectedCategory === '4-Wheelers & ATVs' && (item.itemType !== 'vehicle' || !item.vehicleType?.includes('4-Wheeler'))) return false;
+        if (selectedCategory === 'Semis & Heavy Duty' && (item.itemType !== 'vehicle' || !item.vehicleType?.includes('Semi'))) return false;
+        if (selectedCategory === 'RVs & Haulers' && (item.itemType !== 'vehicle' || !item.vehicleType?.includes('RV'))) return false;
+
+        if (selectedCategory === 'All Parts & Accessories' && item.itemType !== 'part') return false;
+        if (selectedCategory === 'Engine & Performance' && item.partCategory !== 'Engine & Performance') return false;
+        if (selectedCategory === 'Suspension & Brakes' && item.partCategory !== 'Suspension & Brakes') return false;
+        if (selectedCategory === 'Wheels & Tires' && item.partCategory !== 'Wheels & Tires') return false;
+        if (selectedCategory === 'Interior & Safety' && item.partCategory !== 'Interior & Safety') return false;
+        if (selectedCategory === 'Exterior & Aero' && item.partCategory !== 'Exterior & Aero') return false;
+        if (selectedCategory === 'SXS & Powersports Parts' && item.partCategory !== 'SXS & Powersports') return false;
+        if (selectedCategory === 'Tools & Garage Gear' && item.partCategory !== 'Tools & Garage Gear') return false;
       }
 
-      // Condition filter (parts only)
-      if (activeTab === 'parts' && selectedCondition !== 'All') {
-        if (item.condition !== selectedCondition) {
-          return false;
-        }
-      }
-
-      // Location filter
+      // 2. Location filter
       if (selectedLocation !== 'All Locations') {
         if (item.location.toLowerCase() !== selectedLocation.toLowerCase()) {
           return false;
         }
       }
 
-      // Search query
+      // 3. Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
         const titleMatch = item.title.toLowerCase().includes(query);
@@ -133,19 +119,18 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
       if (!a.featured && b.featured) return 1;
       return b.viewsCount - a.viewsCount;
     });
-  }, [tabItems, activeTab, selectedCategory, selectedCondition, selectedLocation, searchQuery]);
+  }, [items, selectedCategory, selectedLocation, searchQuery]);
 
   const clearFilters = () => {
-    setSelectedCategory('All');
-    setSelectedCondition('All');
+    setSelectedCategory('All Categories');
     setSelectedLocation('All Locations');
     setSearchQuery('');
     setIsSearchOpen(false);
   };
 
-  const hasActiveFilters = selectedCategory !== 'All' || selectedCondition !== 'All' || selectedLocation !== 'All Locations' || searchQuery !== '';
+  const hasActiveFilters = selectedCategory !== 'All Categories' || selectedLocation !== 'All Locations' || searchQuery !== '';
 
-  // Exclude spotlight item from grid when no filters are active to avoid duplicate
+  // Strict single Spotlight rule matching Builds page: When hero banner is visible, exclude it from grid
   const gridItems = useMemo(() => {
     if (!hasActiveFilters && spotlightItem) {
       return filteredItems.filter(i => i.id !== spotlightItem.id);
@@ -164,67 +149,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   return (
     <div className="pb-16 bg-[#303030] text-white">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-5 sm:pt-6">
-        
-        {/* Marketplace Title & Action Header */}
-        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#3d3d40]">
-          <div>
-            <div className="flex items-center gap-2">
-              <Tag className="w-5 h-5 text-[#C8102E]" />
-              <h1 className="font-['Oswald'] text-2xl sm:text-3xl font-bold uppercase tracking-wide text-white">
-                PARTS BIN <span className="text-[#C8102E]">MARKETPLACE</span>
-              </h1>
-            </div>
-            <p className="text-xs sm:text-sm text-[#aaaaaa] font-mono mt-1">
-              Buy & sell enthusiast vehicles (Cars, Trucks, RVs, Semis, SXS, Dirt Bikes, 4-Wheelers) and automotive parts.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenAddListing}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-sm font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>List in Parts Bin</span>
-          </button>
-        </div>
-
-        {/* Dual Segmented Tabs (Vehicles vs. Parts) */}
-        <div className="mb-4 grid grid-cols-2 gap-2 bg-[#202022] p-1.5 border border-[#38383a]">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('vehicles');
-              clearFilters();
-            }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-3 text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'vehicles'
-                ? 'bg-[#C8102E] text-white shadow-sm'
-                : 'text-[#aaaaaa] hover:text-white hover:bg-[#28282b]'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span>Vehicles For Sale ({vehicleItems.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('parts');
-              clearFilters();
-            }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-3 text-xs sm:text-sm font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              activeTab === 'parts'
-                ? 'bg-[#C8102E] text-white shadow-sm'
-                : 'text-[#aaaaaa] hover:text-white hover:bg-[#28282b]'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Parts & Accessories ({partItems.length})</span>
-          </button>
-        </div>
-
-        {/* Spotlight Featured Deal - Matching Builds Page Banner */}
+        {/* Spotlight Listing - Desktop only, removed on mobile (Identical to Builds page) */}
         {!hasActiveFilters && spotlightItem && (
           <div className="mb-5 sm:mb-6 hidden sm:block">
             <MarketplaceCard
@@ -236,31 +161,29 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
           </div>
         )}
 
-        {/* Filter Toolbar (Exact match with Builds Page DiscoverView Toolbar) */}
+        {/* Categories & Location Filter Toolbar (Identical to Builds DiscoverView Toolbar) */}
         <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
-            {/* Category Filter Dropdown */}
+            {/* Category Dropdown */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
               <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
                 <Layers className="w-4 h-4 text-[#C8102E] shrink-0" />
-                <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">
-                  {activeTab === 'vehicles' ? 'Vehicle Type:' : 'Category:'}
-                </span>
+                <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Category:</span>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full bg-transparent text-xs sm:text-sm text-white focus:outline-none cursor-pointer font-mono truncate"
-                  aria-label="Filter by category"
+                  aria-label="Filter parts bin by category"
                 >
                   {availableCategories.map((cat) => (
                     <option key={cat} value={cat} className="bg-[#171719] text-white">
-                      {cat === 'All' ? (activeTab === 'vehicles' ? 'All Vehicle Types' : 'All Categories') : cat}
+                      {cat}
                     </option>
                   ))}
                 </select>
-                {selectedCategory !== 'All' && (
+                {selectedCategory !== 'All Categories' && (
                   <button
-                    onClick={() => setSelectedCategory('All')}
+                    onClick={() => setSelectedCategory('All Categories')}
                     className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
                     title="Clear category filter"
                   >
@@ -269,28 +192,6 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                 )}
               </div>
             </div>
-
-            {/* Part Condition Filter (Parts tab only) */}
-            {activeTab === 'parts' && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
-                <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
-                  <Filter className="w-4 h-4 text-[#C8102E] shrink-0" />
-                  <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden sm:inline">Condition:</span>
-                  <select
-                    value={selectedCondition}
-                    onChange={(e) => setSelectedCondition(e.target.value)}
-                    className="w-full sm:w-auto bg-transparent text-xs sm:text-sm text-white focus:outline-none cursor-pointer font-mono truncate"
-                    aria-label="Filter by condition"
-                  >
-                    <option value="All" className="bg-[#171719] text-white">All Conditions</option>
-                    <option value="Brand New" className="bg-[#171719] text-white">Brand New</option>
-                    <option value="Like New" className="bg-[#171719] text-white">Like New</option>
-                    <option value="Used - Good" className="bg-[#171719] text-white">Used - Good</option>
-                    <option value="Core / Needs Rebuild" className="bg-[#171719] text-white">Core / Needs Rebuild</option>
-                  </select>
-                </div>
-              </div>
-            )}
 
             {/* Location Selector */}
             <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
@@ -301,7 +202,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   className="w-full sm:w-auto bg-transparent text-xs sm:text-sm text-white focus:outline-none cursor-pointer font-mono truncate"
-                  aria-label="Filter by location"
+                  aria-label="Filter parts bin by location"
                 >
                   {availableLocations.map((loc) => (
                     <option key={loc} value={loc} className="bg-[#171719] text-white">
@@ -324,7 +225,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center shrink-0 ${
+                className={`p-2.5 sm:p-3 border transition-colors cursor-pointer flex items-center justify-center ${
                   isSearchOpen || searchQuery ? 'bg-[#C8102E] text-white border-[#C8102E]' : 'bg-[#171719] text-[#888888] hover:text-white border-[#38383a]'
                 }`}
                 title="Toggle keyword search"
@@ -343,7 +244,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
             </div>
           </div>
 
-          {/* Keyword Search Row */}
+          {/* Optional Keyword Search Row if opened */}
           {isSearchOpen && (
             <div className="mt-3 pt-3 border-t border-[#333333] relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
@@ -351,7 +252,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={activeTab === 'vehicles' ? "Search make, model, year, transmission, seller..." : "Search part name, brand, part number, fitment..."}
+                placeholder="Search specific part, vehicle make, model, seller..."
                 className="w-full pl-9 pr-8 py-2.5 bg-[#1c1c1c] border border-[#444444] text-white placeholder-[#888888] focus:outline-none focus:border-[#C8102E] font-mono text-xs sm:text-sm"
                 autoFocus
               />
@@ -367,42 +268,54 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
           )}
         </div>
 
-        {/* Listings Grid (Matching Builds Page Grid) */}
+        {/* Count Bar (Identical to Builds page) */}
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#3d3d3d] text-xs sm:text-sm font-mono text-[#bbbbbb]">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span>SHOWING <strong className="text-white">{filteredItems.length}</strong> LISTINGS</span>
+            {selectedCategory !== 'All Categories' && <span>· <span className="text-[#C8102E]">{selectedCategory}</span></span>}
+            {selectedLocation !== 'All Locations' && <span>· <span className="text-[#C8102E]">{selectedLocation}</span></span>}
+            {searchQuery && <span>· <span className="text-[#888888]">"{searchQuery}"</span></span>}
+          </div>
+        </div>
+
+        {/* Listings Grid: Dynamically responsive (Identical to Builds page) */}
         {gridItems.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 md:gap-6 w-full">
             {gridItems.map((item) => (
-              <MarketplaceCard
-                key={item.id}
-                item={item}
-                variant="grid"
-                onSelect={onSelectItem}
-                onContactSeller={(item) => setContactItem(item)}
-              />
+              <div key={item.id} className="min-w-0 w-full">
+                <MarketplaceCard
+                  item={item}
+                  variant="grid"
+                  onSelect={onSelectItem}
+                  onContactSeller={(target) => setContactItem(target)}
+                />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 px-4 bg-[#222224] border border-[#383838] p-8">
-            <Tag className="w-12 h-12 text-[#666666] mx-auto mb-3" />
-            <h3 className="font-['Oswald'] text-xl font-bold uppercase text-white mb-1">
-              No Listings Found
+          <div className="border border-[#3d3d3d] bg-[#242424] p-10 text-center max-w-lg mx-auto my-12">
+            <Tag className="w-10 h-10 text-[#888888] mx-auto mb-3" />
+            <h3 className="font-['Oswald'] text-2xl font-bold uppercase text-white">
+              No matching listings found
             </h3>
-            <p className="text-xs sm:text-sm text-[#aaaaaa] font-mono max-w-md mx-auto mb-5">
-              No {activeTab === 'vehicles' ? 'vehicles' : 'parts'} matching your current filters in the Parts Bin.
+            <p className="text-sm text-[#aaaaaa] mt-2">
+              Try adjusting your search or location filter.
             </p>
-            <div className="flex items-center justify-center gap-3">
+            <div className="mt-5 flex justify-center gap-3">
               <button
                 type="button"
                 onClick={clearFilters}
-                className="px-4 py-2 bg-[#2d2d30] hover:bg-[#38383c] border border-[#444448] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="px-4 py-2 text-xs font-bold uppercase tracking-wider font-['Oswald'] bg-[#333333] hover:bg-[#444444] text-white transition-colors cursor-pointer"
               >
                 Clear Filters
               </button>
               <button
                 type="button"
                 onClick={onOpenAddListing}
-                className="px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider font-['Oswald'] bg-[#C8102E] hover:bg-[#e01334] text-white transition-colors cursor-pointer"
               >
-                List The First Item
+                <Plus className="w-3.5 h-3.5" />
+                <span>List in Parts Bin</span>
               </button>
             </div>
           </div>
