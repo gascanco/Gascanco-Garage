@@ -43,6 +43,20 @@ export const POPULAR_US_CITIES = [
   'Boston, MA',
 ];
 
+export const STATE_NAMES: Record<string, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California',
+  CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia',
+  HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+  KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri',
+  MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey',
+  NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',
+  OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina',
+  SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont',
+  VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+  DC: 'District of Columbia'
+};
+
 const STATE_NAME_TO_ABBR: Record<string, string> = {
   alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
   colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
@@ -57,6 +71,36 @@ const STATE_NAME_TO_ABBR: Record<string, string> = {
   ca: 'CA', az: 'AZ', nv: 'NV', tx: 'TX', co: 'CO', ut: 'UT', wa: 'WA', or: 'OR',
   fl: 'FL', ga: 'GA', nc: 'NC', tn: 'TN', il: 'IL', mi: 'MI', oh: 'OH', pa: 'PA', ny: 'NY'
 };
+
+/**
+ * Extracts the full US State name from any location string (e.g., "Pensacola, Florida, United State" -> "Florida", "Costa Mesa, CA" -> "California", "Austin, TX" -> "Texas").
+ */
+export function extractStateName(location?: string): string {
+  if (!location) return 'California';
+  const trimmed = location.trim();
+  if (!trimmed) return 'California';
+
+  // 1. Check for multi-word or single-word state names explicitly (e.g., Florida, North Carolina, West Virginia)
+  const lower = trimmed.toLowerCase();
+  for (const [, fullName] of Object.entries(STATE_NAMES)) {
+    const fullNameLower = fullName.toLowerCase();
+    const regex = new RegExp(`\\b${fullNameLower}\\b`, 'i');
+    if (regex.test(lower)) {
+      return fullName;
+    }
+  }
+
+  // 2. Check for 2-letter state abbreviations (e.g. CA, FL, OH, WV, TX)
+  const tokens = trimmed.replace(/[^a-zA-Z\s]/g, ' ').split(/\s+/).filter(Boolean);
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const tokenUpper = tokens[i].toUpperCase();
+    if (STATE_NAMES[tokenUpper]) {
+      return STATE_NAMES[tokenUpper];
+    }
+  }
+
+  return 'California';
+}
 
 /**
  * Standardize any location input to proper "City, ST" format.

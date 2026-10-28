@@ -89,8 +89,8 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         className="group relative cursor-pointer overflow-hidden border border-[#404040] bg-[#242424] hover:border-[#C8102E] transition-all duration-300 shadow-lg min-w-0 w-full"
       >
         <div className="grid grid-cols-1 md:grid-cols-12 min-w-0">
-          {/* Visual Showcase */}
-          <div className="md:col-span-7 relative h-52 sm:h-64 md:h-auto overflow-hidden bg-[#181818] min-h-[220px] md:min-h-[300px]">
+          {/* Visual Showcase - Fixed 16:10 automotive landscape ratio with object-cover */}
+          <div className="md:col-span-7 relative aspect-[16/10] sm:aspect-[16/9] md:aspect-[16/10] overflow-hidden bg-[#181818] shrink-0">
             {!imageError ? (
               <img
                 src={vehicle.primaryImage}
@@ -98,7 +98,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
                 referrerPolicy="no-referrer"
                 onError={() => setImageError(true)}
                 onLoad={() => setImageLoaded(true)}
-                className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${
+                className={`w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105 ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
               />
@@ -249,18 +249,18 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
       onClick={() => onSelect(vehicle.id)}
       className="group relative flex flex-col h-full min-w-0 w-full border border-[#383838] bg-[#222222] hover:border-[#C8102E] hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden select-none"
     >
-      {/* Full Photo Showcase Container (Full width, Uncropped, No Black Background) */}
-      <div className="relative w-full overflow-hidden bg-transparent shrink-0">
+      {/* Full Photo Showcase Container - Standardized 16:10 aspect ratio with object-cover to eliminate dead space */}
+      <div className="relative w-full aspect-[16/10] overflow-hidden bg-[#18181a] shrink-0">
         {!imageError ? (
           <img
             src={vehicle.primaryImage}
             alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
-            className="w-full h-auto block object-contain transition-transform duration-500 group-hover:scale-102"
+            className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="aspect-[16/10] w-full bg-[#1e1e20] flex items-center justify-center">
+          <div className="w-full h-full bg-[#1e1e20] flex items-center justify-center">
             {renderImageFallback()}
           </div>
         )}

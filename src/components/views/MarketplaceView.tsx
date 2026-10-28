@@ -4,6 +4,7 @@ import { MarketplaceCard } from '../cards/MarketplaceCard';
 import { 
   Search, X, Plus, MapPin, Layers, Tag, Mail, CheckCircle2, Send
 } from 'lucide-react';
+import { extractStateName } from '../../utils/dateAndLocationUtils';
 
 interface MarketplaceViewProps {
   items: MarketplaceItem[];
@@ -58,11 +59,11 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
     ];
   }, []);
 
-  // Dynamic Locations list
+  // Dynamic Locations list - Merged into States only
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
     items.forEach(i => {
-      if (i.location) set.add(i.location);
+      if (i.location) set.add(extractStateName(i.location));
     });
     return ['All Locations', ...Array.from(set).sort()];
   }, [items]);
@@ -91,9 +92,10 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
         if (selectedCategory === 'Tools & Garage Gear' && item.partCategory !== 'Tools & Garage Gear') return false;
       }
 
-      // 2. Location filter
+      // 2. Location filter (States only)
       if (selectedLocation !== 'All Locations') {
-        if (item.location.toLowerCase() !== selectedLocation.toLowerCase()) {
+        const stateName = extractStateName(item.location);
+        if (stateName.toLowerCase() !== selectedLocation.toLowerCase()) {
           return false;
         }
       }

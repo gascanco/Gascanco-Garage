@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Vehicle, SpotlightConfig } from '../../types/garage';
 import { VehicleCard } from '../cards/VehicleCard';
-import { Search, X, Compass, Plus, MapPin, Layers, Star } from 'lucide-react';
+import { Search, X, Compass, Plus, MapPin, Layers, Star, Users } from 'lucide-react';
+import { extractStateName } from '../../utils/dateAndLocationUtils';
 
 interface DiscoverViewProps {
   vehicles: Vehicle[];
@@ -64,13 +65,46 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     return ['All Categories', ...Array.from(set)];
   }, [vehicles]);
 
-  // Dynamic Locations list
+  // Dynamic Locations list - Merged into States only
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
     vehicles.forEach(v => {
-      if (v.owner?.location) set.add(v.owner.location);
+      if (v.owner?.location) {
+        set.add(extractStateName(v.owner.location));
+      }
     });
     return ['All Locations', ...Array.from(set).sort()];
+  }, [vehicles]);
+
+  // Community Builders list for bottom section: limited to 10 builders
+  const communityBuilders = useMemo(() => {
+    const map = new Map<string, {
+      id: string;
+      name: string;
+      avatar: string;
+      location: string;
+      buildCount: number;
+    }>();
+
+    vehicles.forEach(v => {
+      const owner = v.owner;
+      if (!owner) return;
+      const key = owner.id || owner.name;
+      const existing = map.get(key);
+      if (existing) {
+        existing.buildCount += 1;
+      } else {
+        map.set(key, {
+          id: owner.id,
+          name: owner.name,
+          avatar: owner.avatar,
+          location: extractStateName(owner.location),
+          buildCount: 1,
+        });
+      }
+    });
+
+    return Array.from(map.values()).slice(0, 10);
   }, [vehicles]);
 
   // Filtered vehicle list: Category, Location & Search based
@@ -79,8 +113,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       if (selectedCategory !== 'All Categories' && v.category !== selectedCategory) {
         return false;
       }
-      if (selectedLocation !== 'All Locations' && v.owner.location.toLowerCase() !== selectedLocation.toLowerCase()) {
-        return false;
+      if (selectedLocation !== 'All Locations') {
+        const stateName = extractStateName(v.owner.location);
+        if (stateName.toLowerCase() !== selectedLocation.toLowerCase()) {
+          return false;
+        }
       }
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -295,6 +332,51 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Vehicle</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Community Builders Section - Compact horizontal cards shrunk to information, no @handle, larger avatar, 10 builders */}
+        {communityBuilders.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-[#3d3d3d]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-[#C8102E]" />
+                <h3 className="font-['Oswald'] text-lg sm:text-xl font-bold uppercase tracking-wider text-white">
+                  Community Builders
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-[#888888]">
+                {communityBuilders.length} Featured
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center">
+              {communityBuilders.map((builder) => (
+                <div
+                  key={builder.id}
+                  onClick={() => onSelectOwner(builder.id)}
+                  className="inline-flex items-center gap-3 px-3.5 py-2.5 bg-[#222224] border border-[#38383a] hover:border-[#C8102E] transition-all cursor-pointer shadow-sm group w-auto shrink-0 select-none"
+                  title={`View ${builder.name}'s garage`}
+                >
+                  <img
+                    src={builder.avatar}
+                    alt={builder.name}
+                    className="w-12 h-12 rounded-full object-cover border border-[#444444] group-hover:border-[#C8102E] shrink-0"
+                  />
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="font-['Oswald'] font-bold text-sm sm:text-base uppercase text-white group-hover:text-[#C8102E] transition-colors leading-tight truncate">
+                      {builder.name}
+                    </span>
+                    <span className="text-[11px] font-mono text-[#888888] leading-tight">
+                      {builder.location}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-[#C8102E] uppercase mt-0.5 leading-tight">
+                      {builder.buildCount} {builder.buildCount === 1 ? 'Build' : 'Builds'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

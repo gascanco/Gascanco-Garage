@@ -13,7 +13,7 @@ import {
 import { ReactionButtons } from './ReactionButtons';
 import { ThreadedComments } from './ThreadedComments';
 import { CommunityPollCard } from '../cards/CommunityPollCard';
-import { formatTimeAgo } from '../../utils/dateAndLocationUtils';
+import { formatTimeAgo, extractStateName } from '../../utils/dateAndLocationUtils';
 
 interface ActivityFeedProps {
   vehicles: Vehicle[];
@@ -392,6 +392,12 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
     // 2. Community Posts (Posts about updates, mods, photos, questions)
     posts.forEach((post, pIndex) => {
+      // Suppress redundant generic "New Vehicle" duplicate posts since rich vehicle card is already generated
+      const isRedundantNewVeh = 
+        (post.title?.trim().toUpperCase() === 'NEW VEHICLE') ||
+        (post.content?.trim().toLowerCase() === 'added a new vehicle');
+      if (isRedundantNewVeh) return;
+
       const { timestamp, display } = parseDateToTimestamp(post.createdAt || post.dateStr, pIndex * 3);
 
       // Auto-extract linkPreview if not explicitly provided
@@ -519,11 +525,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     return list.sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
   }, [vehicles, events, posts, polls]);
 
-  // Dynamic Locations list for Live Feed
+  // Dynamic Locations list for Live Feed - Merged into States only
   const availableLocations = useMemo(() => {
     const set = new Set<string>();
     activities.forEach(a => {
-      if (a.owner?.location) set.add(a.owner.location);
+      if (a.owner?.location) {
+        set.add(extractStateName(a.owner.location));
+      }
     });
     return ['All Locations', ...Array.from(set).sort()];
   }, [activities]);
@@ -561,10 +569,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         if (selectedCategory === 'Event News' && act.type !== 'event') return false;
       }
 
-      // 2. Location Filter
+      // 2. Location Filter (States only)
       if (selectedLocation !== 'All Locations') {
-        const loc = act.owner?.location?.toLowerCase() || '';
-        if (!loc.includes(selectedLocation.toLowerCase())) return false;
+        const stateName = extractStateName(act.owner?.location);
+        if (stateName.toLowerCase() !== selectedLocation.toLowerCase()) return false;
       }
 
       // 3. Search query filter
@@ -1232,7 +1240,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
                     {act.photoUrl && (
                       <div
-                        className="w-full relative max-h-[560px] bg-[#141416] border-t border-[#333336] flex items-center justify-center overflow-hidden cursor-pointer group/photo"
+                        className="w-full relative aspect-[16/10] sm:aspect-[16/9] bg-[#141416] border-t border-[#333336] flex items-center justify-center overflow-hidden cursor-pointer group/photo shrink-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (act.vehicleId) {
@@ -1247,7 +1255,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                           src={act.photoUrl}
                           alt={act.vehicleName || act.title}
                           referrerPolicy="no-referrer"
-                          className="w-full h-auto max-h-[560px] object-contain group-hover/photo:scale-[1.02] transition-transform duration-300"
+                          className="w-full h-full object-cover object-center group-hover/photo:scale-[1.02] transition-transform duration-300"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
                           <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />

@@ -494,25 +494,9 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-[#C8102E] uppercase font-bold tracking-wider">
-                  {vehicle.category || 'Automotive Build'}
-                </span>
-                {vehicle.buildStatus && (
-                  <>
-                    <span className="text-[#555555]">•</span>
-                    <span className="text-xs font-mono text-[#aaaaaa]">{vehicle.buildStatus}</span>
-                  </>
-                )}
-              </div>
-              <h1 className="font-['Oswald'] text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-white leading-none mt-1">
+              <h1 className="font-['Oswald'] text-3xl sm:text-4xl md:text-5xl font-bold uppercase tracking-tight text-white leading-none">
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h1>
-              {vehicle.nickname && (
-                <p className="text-xs sm:text-sm font-mono text-[#aaaaaa] mt-1">
-                  "{vehicle.nickname}"
-                </p>
-              )}
             </div>
           </div>
 
@@ -567,17 +551,6 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               </button>
             </>
           )}
-
-          {/* Fullscreen Button */}
-          <button
-            onClick={() => {
-              setActiveLightboxImage(vehicle.galleryImages[activeImageIndex] || vehicle.primaryImage);
-              setLightboxOpen(true);
-            }}
-            className="absolute top-4 right-4 px-3 py-1.5 rounded bg-black/70 hover:bg-[#C8102E] text-white text-xs font-mono uppercase tracking-wider backdrop-blur-sm transition-colors cursor-pointer border border-white/20"
-          >
-            Fullscreen
-          </button>
         </div>
       </section>
 
