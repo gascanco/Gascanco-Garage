@@ -591,7 +591,7 @@ export default function App() {
 
       {/* Action Toast Feedback - Zero radius */}
       {toast && (
-        <div className="fixed bottom-20 md:bottom-8 right-4 md:right-8 z-50 bg-[#1e1e20] text-white px-4 py-2.5 border border-[#3e3e42] shadow-2xl flex items-center gap-2.5 text-xs font-mono animate-fade-in">
+        <div className="fixed bottom-32 sm:bottom-34 md:bottom-12 right-4 md:right-8 z-50 bg-[#1e1e20] text-white px-4 py-2.5 border border-[#3e3e42] shadow-2xl flex items-center gap-2.5 text-xs font-mono animate-fade-in">
           {toast.iconType === 'kickass' ? (
             <LoveYouGesture className="w-4 h-4 text-[#C8102E]" filled={true} />
           ) : toast.iconType === 'not_cool' ? (
