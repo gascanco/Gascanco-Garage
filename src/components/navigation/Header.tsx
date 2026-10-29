@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'text-[#bbbbbb] hover:text-white'
             }`}
           >
-            <span>Live Activity Feed</span>
+            <span>Live Feed</span>
           </button>
 
           <button
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <SlammedTruckIcon className="w-4 h-4" />
-            <span>Community Builds</span>
+            <span>Builds & Rides</span>
           </button>
 
           <button
@@ -207,13 +207,22 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="md:hidden border-t border-[#383838] bg-[#222222] px-4 py-4 space-y-2">
           <button
             onClick={() => {
+              setActiveView({ type: 'activity-feed' });
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left px-3 py-2.5 rounded font-['Oswald'] text-lg font-bold uppercase text-white hover:bg-[#2d2d2d] flex items-center gap-2.5"
+          >
+            <span>Live Feed</span>
+          </button>
+          <button
+            onClick={() => {
               setActiveView({ type: 'discover' });
               setMobileMenuOpen(false);
             }}
             className="w-full text-left px-3 py-2.5 rounded font-['Oswald'] text-lg font-bold uppercase text-white hover:bg-[#2d2d2d] flex items-center gap-2.5"
           >
             <SlammedTruckIcon className="w-5 h-5 text-[#C8102E] shrink-0" />
-            <span>The [Garage] Builds</span>
+            <span>Builds & Rides</span>
           </button>
           <button
             onClick={() => {

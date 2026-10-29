@@ -15,7 +15,7 @@ import {
   ShoppingBag, ShieldCheck, BarChart3, Vote, Package
 } from 'lucide-react';
 
-export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll' | 'marketplace';
+export type AddModalMode = 'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll' | 'marketplace' | 'update-vehicle';
 
 interface AddVehicleModalProps {
   isOpen: boolean;
@@ -594,6 +594,87 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     handleCloseModal();
   };
 
+  // ----------------------------------------------------
+  // 8. UPDATE A VEHICLE STATE
+  // ----------------------------------------------------
+  const [updateVehicleId, setUpdateVehicleId] = useState<string>('');
+  const [updateTitle, setUpdateTitle] = useState<string>('');
+  const [updateCategoryTag, setUpdateCategoryTag] = useState<string>('Performance & Engine');
+  const [updateContent, setUpdateContent] = useState<string>('');
+  const [updateImages, setUpdateImages] = useState<string[]>([]);
+  const [isUpdateDragOver, setIsUpdateDragOver] = useState(false);
+  const updateFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleAddUpdatePhotos = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const currentCount = updateImages.length;
+    const remainingSlots = 4 - currentCount;
+    if (remainingSlots <= 0) return;
+
+    const validFiles = Array.from(files)
+      .filter(f => f.type.startsWith('image/'))
+      .slice(0, remainingSlots);
+
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          const res = e.target.result;
+          setUpdateImages(prev => {
+            if (prev.length >= 4) return prev;
+            return [...prev, res];
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveUpdatePhoto = (idxToRemove: number) => {
+    setUpdateImages(prev => prev.filter((_, idx) => idx !== idxToRemove));
+  };
+
+  const handleUpdateVehicleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetVehId = updateVehicleId || (userVehicles[0] ? userVehicles[0].id : '');
+    if (!targetVehId) {
+      alert('Please select one of your vehicles to update.');
+      return;
+    }
+    if (!updateTitle.trim()) {
+      alert('Please enter an update headline.');
+      return;
+    }
+    if (!updateContent.trim()) {
+      alert('Please describe what work was completed.');
+      return;
+    }
+
+    const targetVeh = userVehicles.find(v => v.id === targetVehId);
+    const defaultImg = targetVeh?.primaryImage || '/src/assets/images/civic_si_ef9_1791130474543.jpg';
+    const finalImages = updateImages.length > 0 ? updateImages : [defaultImg];
+
+    const newUpdate: BuildUpdate = {
+      id: `upd-${Date.now()}`,
+      vehicleId: targetVehId,
+      title: updateTitle.trim(),
+      date: 'Just now',
+      categoryTag: updateCategoryTag,
+      content: updateContent.trim(),
+      images: finalImages,
+      likesCount: 0,
+    };
+
+    if (onBuildUpdateAdded) {
+      onBuildUpdateAdded({
+        vehicleId: targetVehId,
+        update: newUpdate,
+      });
+    }
+
+    handleCloseModal();
+  };
+
   // URL extraction helper
   const extractUrlFromText = (text: string): string | null => {
     const match = text.match(/https?:\/\/[^\s]+/i);
@@ -920,6 +1001,11 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     setMktDescription('');
     setMktPhotos([]);
     setMktPrimaryPhotoIndex(0);
+    setUpdateVehicleId('');
+    setUpdateTitle('');
+    setUpdateCategoryTag('Performance & Engine');
+    setUpdateContent('');
+    setUpdateImages([]);
     onClose();
   };
 
@@ -959,6 +1045,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 {mode === 'post' && 'ADD A POST'}
                 {mode === 'advertisement' && 'CREATE SHOPIFY ADVERTISEMENT'}
                 {mode === 'poll' && 'CREATE COMMUNITY POLL'}
+                {mode === 'update-vehicle' && 'UPDATE A VEHICLE'}
               </h2>
             </div>
 
@@ -975,48 +1062,13 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         )}
 
         {/* ========================================================
-            MODE: SELECT (Simplified: Icon + Title, Vertically Stacked, Visible "X")
+            MODE: SELECT (Simplified: Icon + Title Only, Click outside to close)
            ======================================================== */}
         {mode === 'select' && (
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* Clearly Visible Top Bar with "X" to close */}
-            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#383838] bg-[#282828] shrink-0">
-              <span className="font-['Oswald'] text-base font-bold uppercase tracking-wider text-[#cccccc] flex items-center gap-2">
-                <span className="w-2 h-2 bg-[#C8102E]" />
-                Select Action
-              </span>
-
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="p-1.5 text-[#aaaaaa] hover:text-white transition-colors cursor-pointer"
-                aria-label="Close modal"
-                title="Close"
-              >
-                <X className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </div>
-
-            {/* Vertically Stacked 4 Options - Icon & Title Only, Compact for mobile */}
-            <div className="p-3.5 sm:p-6 flex flex-col gap-2.5 sm:gap-3 flex-1 overflow-y-auto">
-              {/* Option 1: Add an Event */}
-              <button
-                type="button"
-                onClick={() => setMode('event')}
-                className="group w-full flex items-center justify-between p-3.5 sm:p-5 bg-[#282828] hover:bg-[#303030] border border-[#3d3d3d] hover:border-[#C8102E] transition-all cursor-pointer text-left"
-              >
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#C8102E] group-hover:text-white transition-colors">
-                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
-                    Add an Event
-                  </span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
-              </button>
-
-              {/* Option 2: Add a Vehicle */}
+            {/* Vertically Stacked Options - Icon & Title Only, Zero Subtext */}
+            <div className="p-4 sm:p-6 flex flex-col gap-2.5 sm:gap-3 flex-1 overflow-y-auto">
+              {/* Option 1: Add a Vehicle */}
               <button
                 type="button"
                 onClick={() => setMode('vehicle')}
@@ -1033,29 +1085,29 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                 <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
               </button>
 
-              {/* Option 3: Sell in Parts Bin (Marketplace) */}
+              {/* Option 2: Update a Vehicle */}
               <button
                 type="button"
-                onClick={() => setMode('marketplace')}
+                onClick={() => {
+                  if (userVehicles.length > 0 && !updateVehicleId) {
+                    setUpdateVehicleId(userVehicles[0].id);
+                  }
+                  setMode('update-vehicle');
+                }}
                 className="group w-full flex items-center justify-between p-3.5 sm:p-5 bg-[#282828] hover:bg-[#303030] border border-[#3d3d3d] hover:border-[#C8102E] transition-all cursor-pointer text-left"
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="p-2.5 sm:p-3 bg-[#1e1e1e] group-hover:bg-[#C8102E] text-[#C8102E] group-hover:text-white transition-colors">
-                    <Tag className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors block">
-                      Sell in Parts Bin
-                    </span>
-                    <span className="text-[11px] font-mono text-[#888888]">
-                      List a Vehicle or Automotive Part for sale
-                    </span>
-                  </div>
+                  <span className="font-['Oswald'] text-lg sm:text-2xl font-bold uppercase tracking-wide text-white group-hover:text-[#C8102E] transition-colors">
+                    Update a Vehicle
+                  </span>
                 </div>
                 <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
               </button>
 
-              {/* Option 4: Add a Post */}
+              {/* Option 3: Add a Post */}
               <button
                 type="button"
                 onClick={() => setMode('post')}
@@ -1095,6 +1147,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                   <ChevronRight className="w-5 h-5 text-[#666666] group-hover:text-white group-hover:translate-x-1 transition-all" />
                 </button>
               )}
+
               {/* Option 5: Create Community Poll (Super Admin only) */}
               {isHardAdmin(currentUser) && (
                 <button
@@ -1120,6 +1173,212 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
               )}
             </div>
           </div>
+        )}
+
+        {/* ========================================================
+            MODE: UPDATE A VEHICLE (Logs build update & auto-posts to Live Feed)
+           ======================================================== */}
+        {mode === 'update-vehicle' && (
+          <form onSubmit={handleUpdateVehicleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5">
+              {userVehicles.length === 0 ? (
+                <div className="bg-[#1a1a1c] border border-[#38383a] p-6 text-center space-y-4">
+                  <Car className="w-10 h-10 text-[#C8102E] mx-auto opacity-70" />
+                  <div>
+                    <h3 className="font-['Oswald'] text-lg font-bold uppercase text-white">No Vehicles In Your Garage</h3>
+                    <p className="text-xs font-mono text-[#888888] mt-1">
+                      You need to register a vehicle in your garage before publishing build updates.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMode('vehicle')}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    <span>Add Your First Vehicle</span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Vehicle Picker */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
+                      Select Vehicle to Update *
+                    </label>
+                    <select
+                      value={updateVehicleId || (userVehicles[0]?.id || '')}
+                      onChange={(e) => setUpdateVehicleId(e.target.value)}
+                      className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E] font-medium"
+                      required
+                    >
+                      {userVehicles.map(veh => (
+                        <option key={veh.id} value={veh.id}>
+                          {veh.year} {veh.make} {veh.model} {veh.nickname ? `("${veh.nickname}")` : ''} — {veh.category || 'Ride'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Headline / Title & Category Tag */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
+                        Update Headline *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Installed Tein Flex Z Coilovers & Corner Balanced"
+                        value={updateTitle}
+                        onChange={(e) => setUpdateTitle(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white placeholder-[#666666] focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
+                        Category Tag
+                      </label>
+                      <select
+                        value={updateCategoryTag}
+                        onChange={(e) => setUpdateCategoryTag(e.target.value)}
+                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                      >
+                        <option value="Performance & Engine">Performance & Engine</option>
+                        <option value="Suspension & Handling">Suspension & Handling</option>
+                        <option value="Brakes, Wheels & Tires">Brakes, Wheels & Tires</option>
+                        <option value="Exterior & Aero">Exterior & Aero</option>
+                        <option value="Interior & Safety">Interior & Safety</option>
+                        <option value="Maintenance & Track Prep">Maintenance & Track Prep</option>
+                        <option value="Dyno & Tuning">Dyno & Tuning</option>
+                        <option value="Delivery & Milestone">Delivery & Milestone</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Work Description / Story */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
+                      Work Completed & Driving Impressions *
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      placeholder="Describe the parts installed, fitment notes, torque specs, dyno results, or how it drives on the road/track..."
+                      value={updateContent}
+                      onChange={(e) => setUpdateContent(e.target.value)}
+                      className="w-full bg-[#1c1c1c] border border-[#444444] p-3 text-sm text-white placeholder-[#666666] focus:outline-none focus:border-[#C8102E] resize-none"
+                    />
+                  </div>
+
+                  {/* Photo Upload & Gallery */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-[#C8102E]" />
+                        <span>Update Photos ({updateImages.length}/4)</span>
+                      </label>
+                      <span className="text-[11px] font-mono text-[#777777]">
+                        Auto-shares to Live Feed
+                      </span>
+                    </div>
+
+                    {/* Drag-and-drop box */}
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); setIsUpdateDragOver(true); }}
+                      onDragLeave={() => setIsUpdateDragOver(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsUpdateDragOver(false);
+                        handleAddUpdatePhotos(e.dataTransfer.files);
+                      }}
+                      onClick={() => updateFileInputRef.current?.click()}
+                      className={`border-2 border-dashed p-4 text-center cursor-pointer transition-colors ${
+                        isUpdateDragOver 
+                          ? 'border-[#C8102E] bg-[#C8102E]/10' 
+                          : 'border-[#444444] bg-[#1a1a1c] hover:border-[#666666]'
+                      }`}
+                    >
+                      <input
+                        ref={updateFileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleAddUpdatePhotos(e.target.files)}
+                      />
+                      <Upload className="w-6 h-6 text-[#888888] mx-auto mb-1.5" />
+                      <p className="text-xs text-white font-medium">Click to upload photos or drag & drop</p>
+                      <p className="text-[11px] font-mono text-[#777777] mt-0.5">PNG, JPG, WEBP up to 10MB each</p>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-mono uppercase text-[#777777] block">Quick Presets:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRESET_GALLERY_IMAGES.slice(0, 5).map((preset, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              if (updateImages.length < 4 && !updateImages.includes(preset.url)) {
+                                setUpdateImages(prev => [...prev, preset.url]);
+                              }
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-mono bg-[#282828] hover:bg-[#333333] border border-[#444444] text-[#cccccc] hover:text-white transition-colors cursor-pointer"
+                          >
+                            + {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Photo Thumbnails */}
+                    {updateImages.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
+                        {updateImages.map((img, idx) => (
+                          <div key={idx} className="relative aspect-video sm:aspect-square bg-black border border-[#444444] group overflow-hidden">
+                            <img src={img} alt={`Update thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveUpdatePhoto(idx)}
+                              className="absolute top-1 right-1 p-1 bg-black/80 hover:bg-[#C8102E] text-white transition-colors cursor-pointer"
+                              title="Remove photo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="p-3.5 sm:px-6 sm:py-4 border-t border-[#383838] bg-[#282828] shrink-0 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setMode('select')}
+                className="px-4 py-2 text-xs font-mono text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-white transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back</span>
+              </button>
+
+              {userVehicles.length > 0 && (
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2 shadow-md"
+                >
+                  <span>Publish Update</span>
+                  <Check className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </form>
         )}
 
         {/* ========================================================

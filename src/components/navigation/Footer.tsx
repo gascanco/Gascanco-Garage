@@ -17,7 +17,7 @@ export const Footer: React.FC<FooterProps> = ({ setActiveView, onOpenAddVehicle 
           <div className="md:col-span-1 space-y-3">
             <GascancoLogo variant="with-garage" size="sm" className="text-white" />
             <p className="text-xs text-[#758195] leading-relaxed">
-              Automotive enthusiast community, build registry, and garage journals native to the Gascanco lifestyle.
+              Automotive enthusiast community, build registry, and garage updates native to the Gascanco lifestyle.
             </p>
             <p className="text-[11px] font-mono text-[#5b6678]">
               Built for seamless integration into Shopify Online Store 2.0.

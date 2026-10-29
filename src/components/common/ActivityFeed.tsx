@@ -368,27 +368,9 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
     return dateStr;
   };
 
-  // Compile all activities across community posts and events (wrenching log feed removed)
+  // Compile all activities across community posts, polls, and vehicle updates
   const activities = useMemo<ActivityItem[]>(() => {
     const list: ActivityItem[] = [];
-
-    // 1. Events
-    events.forEach((evt, eIndex) => {
-      const { timestamp, display } = parseDateToTimestamp(evt.date, eIndex * 4);
-      list.push({
-        id: `act-evt-${evt.id}`,
-        type: 'event',
-        dateStr: `${evt.date} • ${evt.time}`,
-        timestamp,
-        owner: evt.organizer,
-        title: evt.title,
-        description: evt.description,
-        badge: evt.eventType,
-        photoUrl: evt.coverImage,
-        eventData: evt,
-        likesCount: evt.attendeesCount,
-      });
-    });
 
     // 2. Community Posts (Posts about updates, mods, photos, questions)
     posts.forEach((post, pIndex) => {
@@ -1627,61 +1609,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             </div>
           )}
 
-          {/* 3. Upcoming Community Events / Meets */}
-          {upcomingEvents.length > 0 && (
-            <div className="bg-[#242424] border border-[#3d3d3d] p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-[#333333]">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-[#C8102E]" />
-                  <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">
-                    UPCOMING MEETS
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-[#888888]">{upcomingEvents.length} Active</span>
-              </div>
 
-              <div className="space-y-3">
-                {upcomingEvents.map(evt => (
-                  <div 
-                    key={evt.id} 
-                    onClick={() => onSelectEvent ? onSelectEvent(evt.id) : onExploreEvents?.()}
-                    className="p-2.5 bg-[#1c1c1c] border border-[#383838] hover:border-[#C8102E] transition-all duration-150 space-y-1.5 cursor-pointer group/meet"
-                    title={`View details for ${evt.title}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono uppercase font-bold text-[#C8102E] bg-[#C8102E]/10 px-1.5 py-0.5">
-                        {evt.eventType}
-                      </span>
-                      <span className="text-[10px] font-mono text-[#888888]">{evt.attendeesCount} RSVP</span>
-                    </div>
-                    <h5 className="font-['Oswald'] text-sm font-bold uppercase text-white group-hover/meet:text-[#C8102E] transition-colors truncate">
-                      {evt.title}
-                    </h5>
-                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#aaaaaa]">
-                      <Clock className="w-3 h-3 text-[#777777] shrink-0" />
-                      <span className="truncate">{evt.date} · {evt.time}</span>
-                    </div>
-                    {onRsvpEvent && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRsvpEvent(evt.id);
-                        }}
-                        className={`w-full mt-1.5 py-1 text-[11px] font-['Oswald'] font-bold uppercase tracking-wider transition-colors cursor-pointer text-center ${
-                          evt.isAttending
-                            ? 'bg-[#1e2533] text-[#10b981] border border-[#10b981]/40'
-                            : 'bg-[#2a2a2a] hover:bg-[#C8102E] text-white'
-                        }`}
-                      >
-                        {evt.isAttending ? 'RSVP Confirmed ✓' : 'RSVP to Meet'}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* 4. Community Fast Topic Navigation */}
           <div className="p-4 bg-[#1e1e1e] border border-[#383838] text-xs font-mono text-[#888888] space-y-2">

@@ -19,9 +19,6 @@ import { ActivityFeed } from './components/common/ActivityFeed';
 import { VehicleDetailView } from './components/views/VehicleDetailView';
 import { MyGarageView } from './components/views/MyGarageView';
 import { SavedBuildsView } from './components/views/SavedBuildsView';
-import { EventsView } from './components/views/EventsView';
-import { EventDetailView } from './components/views/EventDetailView';
-import { MarketplaceView } from './components/views/MarketplaceView';
 import { AddVehicleModal } from './components/views/AddVehicleModal';
 import { SpotlightManagerModal } from './components/modals/SpotlightManagerModal';
 import { LoveYouGesture } from './components/common/LoveYouGesture';
@@ -152,8 +149,11 @@ export default function App() {
     setActiveView({ type: 'vehicle-detail', vehicleId: newVehicle.id });
   };
 
-  // 2. Add build update
+  // 2. Add build update with automatic Live Feed syndication
   const handleBuildUpdateAdded = (payload: { vehicleId: string; update: BuildUpdate }) => {
+    const targetVeh = vehicles.find(v => v.id === payload.vehicleId);
+    const vehicleLabel = targetVeh ? `${targetVeh.year} ${targetVeh.make} ${targetVeh.model}` : 'Project Vehicle';
+
     setVehicles(prev => prev.map(v => {
       if (v.id === payload.vehicleId) {
         return {
@@ -164,8 +164,26 @@ export default function App() {
       }
       return v;
     }));
-    const targetVeh = vehicles.find(v => v.id === payload.vehicleId);
-    showToast(`Published build update for ${targetVeh ? `${targetVeh.make} ${targetVeh.model}` : 'your vehicle'}! 🤟`);
+
+    // Auto-populate matching post on the Live Feed
+    const autoPost: CommunityPost = {
+      id: `post-upd-${Date.now()}`,
+      title: `${vehicleLabel}: ${payload.update.title}`,
+      content: payload.update.content,
+      category: 'Shop Talk',
+      author: currentUser,
+      dateStr: 'Just now',
+      vehicleId: payload.vehicleId,
+      vehicleName: vehicleLabel,
+      imageUrl: payload.update.images?.[0] || targetVeh?.primaryImage,
+      images: payload.update.images && payload.update.images.length > 0 ? payload.update.images : (targetVeh ? [targetVeh.primaryImage] : []),
+      likesCount: 0,
+      commentsCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCommunityPosts(prev => [autoPost, ...prev]);
+    showToast(`Vehicle update published to Live Feed! 🤟`);
     setActiveView({ type: 'activity-feed' });
   };
 
@@ -398,8 +416,6 @@ export default function App() {
               onUpdateComment={handleUpdateComment}
               onDeleteComment={handleDeleteComment}
               onOpenAddVehicle={handleOpenAddVehicle}
-              onExploreEvents={() => setActiveView({ type: 'events' })}
-              onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
               onExploreBuilds={() => setActiveView({ type: 'community-builds' })}
               spotlightConfig={spotlightConfig}
               onOpenSpotlightModal={() => setIsSpotlightModalOpen(true)}
@@ -464,41 +480,6 @@ export default function App() {
           );
         })()}
 
-        {/* Events View */}
-        {activeView.type === 'events' && (
-          <EventsView
-            events={events}
-            currentUser={currentUser}
-            onRsvpEvent={handleRsvpEvent}
-            onSelectOwner={(ownerId) => setActiveView({ type: 'user-profile', ownerId })}
-            onOpenAddEvent={() => {
-              setAddModalInitialMode('event');
-              setIsAddVehicleOpen(true);
-            }}
-            onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
-          />
-        )}
-
-        {/* Event Detail View */}
-        {activeView.type === 'event-detail' && (() => {
-          const targetEvent = events.find(e => e.id === activeView.eventId) || events[0];
-          return (
-            <EventDetailView
-              event={targetEvent}
-              currentUser={currentUser}
-              onBack={() => setActiveView({ type: 'events' })}
-              onRsvp={handleRsvpEvent}
-              onSelectOwner={(ownerId) => setActiveView({ type: 'user-profile', ownerId })}
-              comments={comments}
-              onAddComment={handleAddComment}
-              onUpdateComment={handleUpdateComment}
-              onDeleteComment={handleDeleteComment}
-              allEvents={events}
-              onSelectEvent={(eventId) => setActiveView({ type: 'event-detail', eventId })}
-            />
-          );
-        })()}
-
         {/* Saved Builds View */}
         {activeView.type === 'saved-builds' && (
           <SavedBuildsView
@@ -510,18 +491,6 @@ export default function App() {
             onLikeToggle={handleLikeToggle}
             onDislikeToggle={handleDislikeToggle}
             onExploreBuilds={() => setActiveView({ type: 'community-builds' })}
-          />
-        )}
-
-        {/* Parts Bin Marketplace View */}
-        {activeView.type === 'marketplace' && (
-          <MarketplaceView
-            items={marketplaceItems}
-            currentUser={currentUser}
-            onOpenAddListing={handleOpenAddMarketplace}
-            onSelectItem={(itemId) => {
-              // Future item detail modal / view
-            }}
           />
         )}
 
@@ -591,7 +560,7 @@ export default function App() {
 
       {/* Action Toast Feedback - Zero radius */}
       {toast && (
-        <div className="fixed bottom-32 sm:bottom-34 md:bottom-12 right-4 md:right-8 z-50 bg-[#1e1e20] text-white px-4 py-2.5 border border-[#3e3e42] shadow-2xl flex items-center gap-2.5 text-xs font-mono animate-fade-in">
+        <div className="fixed bottom-20 sm:bottom-22 right-4 md:right-8 z-50 bg-[#1e1e20] text-white px-4 py-2.5 border border-[#3e3e42] shadow-2xl flex items-center gap-2.5 text-xs font-mono animate-fade-in">
           {toast.iconType === 'kickass' ? (
             <LoveYouGesture className="w-4 h-4 text-[#C8102E]" filled={true} />
           ) : toast.iconType === 'not_cool' ? (

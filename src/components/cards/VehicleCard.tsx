@@ -278,6 +278,9 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
               }`}>
                 {vehicle.visibility}
               </span>
+              <span className="text-[10px] sm:text-xs font-mono px-2 py-0.5 sm:px-2.5 sm:py-1 font-bold uppercase bg-[#C8102E] text-white shadow-sm">
+                {(vehicle.modifications?.length || 0)} MODS
+              </span>
               {onEdit && (
                 <button
                   type="button"
@@ -326,8 +329,18 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Builder Name & Location - Always visible (even on mobile), dynamically sized, no periods */}
-        {showLocation && (
+        {/* Right Side: Builder Name & Location or My Garage Build Sheet prompt */}
+        {variant === 'my-garage' ? (
+          <div className="flex flex-col items-end text-right shrink-0 space-y-0.5">
+            <span className="text-xs font-['Oswald'] font-bold text-[#C8102E] uppercase tracking-wider group-hover:underline flex items-center gap-1">
+              <span>Build Sheet</span>
+              <ArrowRight className="w-3 h-3" />
+            </span>
+            <span className="text-[11px] font-mono text-[#888888]">
+              {vehicle.horsepower || vehicle.engine}
+            </span>
+          </div>
+        ) : showLocation && (
           <div className="flex flex-col items-end text-right shrink-0 min-w-[32%] max-w-[48%] space-y-0.5">
             <span className={`font-['Oswald'] font-bold uppercase text-[#e0e0e0] group-hover:text-white transition-colors break-words text-right leading-tight ${getDynamicOwnerClass(vehicle.owner.name)}`}>
               {vehicle.owner.name}

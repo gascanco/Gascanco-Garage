@@ -1,6 +1,6 @@
 {
   "name": "Gascanco Garage",
-  "description": "Community enthusiast vehicle garage, build journals, and modifications platform native to Gascanco automotive lifestyle.",
+  "description": "Community enthusiast vehicle garage, build updates, and modifications platform native to Gascanco automotive lifestyle.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

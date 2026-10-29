@@ -12,14 +12,17 @@ export type VehicleCategory =
 
 export type ModificationCategory = 
   | 'Engine & Performance'
-  | 'Exhaust'
   | 'Suspension & Chassis'
   | 'Wheels & Tires'
-  | 'Brakes'
   | 'Exterior & Aero'
+  | 'Interior & Electronics'
   | 'Interior'
+  | 'Exhaust'
+  | 'Brakes'
   | 'Electronics & Audio'
   | 'Other & Custom';
+
+export type ModInstallStatus = 'installed' | 'in_progress' | 'planned';
 
 export interface Modification {
   id: string;
@@ -27,8 +30,18 @@ export interface Modification {
   partName: string;
   brand: string;
   description?: string;
+  status?: ModInstallStatus;
   installedDate?: string;
+  cost?: string;
   photoUrl?: string;
+}
+
+export interface PhotoMilestone {
+  id: string;
+  imageUrl: string;
+  caption: string;
+  milestoneDate?: string;
+  tag?: string;
 }
 
 export interface BuildUpdate {
@@ -39,6 +52,7 @@ export interface BuildUpdate {
   content: string;
   images: string[];
   likesCount: number;
+  categoryTag?: string;
 }
 
 export interface Owner {
@@ -94,11 +108,13 @@ export interface Vehicle {
   transmission: string;
   drivetrain: 'RWD' | 'AWD' | 'FWD' | '4WD' | '6x4' | '6x6' | 'Chain/Belt' | string;
   horsepower?: string;
+  curbWeight?: string;
   primaryImage: string;
   galleryImages: string[];
   owner: Owner;
   category?: VehicleCategory;
   modifications?: Modification[];
+  photoMilestones?: PhotoMilestone[];
   buildUpdates?: BuildUpdate[];
   crewAndSponsors?: BuildCrewOrSponsor[];
   featured?: boolean;
