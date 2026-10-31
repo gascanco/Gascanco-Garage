@@ -21,6 +21,7 @@ import { MyGarageView } from './components/views/MyGarageView';
 import { SavedBuildsView } from './components/views/SavedBuildsView';
 import { AddVehicleModal } from './components/views/AddVehicleModal';
 import { SpotlightManagerModal } from './components/modals/SpotlightManagerModal';
+import { ShareAppModal } from './components/common/ShareAppModal';
 import { LoveYouGesture } from './components/common/LoveYouGesture';
 import { CheckCircle2, ThumbsDown } from 'lucide-react';
 
@@ -40,6 +41,7 @@ export default function App() {
   const [likedVehicleIds, setLikedVehicleIds] = useState<Set<string>>(new Set(['veh-skyline-r34', 'veh-ford-f100']));
   const [dislikedVehicleIds, setDislikedVehicleIds] = useState<Set<string>>(new Set());
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [addModalInitialMode, setAddModalInitialMode] = useState<'select' | 'event' | 'vehicle' | 'post' | 'advertisement' | 'poll' | 'marketplace'>('select');
   const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>(INITIAL_MARKETPLACE_ITEMS);
@@ -526,7 +528,14 @@ export default function App() {
           setAddModalInitialMode('select');
           setIsAddVehicleOpen(true);
         }}
+        onOpenShare={() => setIsShareModalOpen(true)}
         currentUserId={currentUser.id}
+      />
+
+      {/* Share Garage Modal */}
+      <ShareAppModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
       />
 
       {/* Add / Create Modal ("Add an Event", "Add a Vehicle", "Add a Build Update", "Add a Post", "Create Poll") */}

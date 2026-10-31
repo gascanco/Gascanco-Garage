@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Vehicle, Owner, PostComment, BuildCrewOrSponsor, isHardAdmin,
-  Modification, ModificationCategory, ModInstallStatus, PhotoMilestone 
+  Modification, ModificationCategory, ModInstallStatus, PhotoMilestone,
+  BuildUpdate
 } from '../../types/garage';
 import { 
   ArrowLeft, Share2, Wrench, ShieldCheck, Heart, ThumbsDown, 
   MapPin, Calendar, Gauge, Camera, Plus, ExternalLink, Trash2, 
   Check, Star, Sparkles, MessageSquare, BookOpen, Pencil, Link2,
   Zap, Disc, Sliders, CheckCircle2, Clock, AlertCircle, ChevronDown,
-  Upload, Layers
+  Upload, Layers, X, ChevronLeft, ChevronRight, Image as ImageIcon
 } from 'lucide-react';
 import { ThreadedComments } from '../common/ThreadedComments';
 
@@ -59,8 +60,10 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'sheet' | 'updates' | 'about' | 'discussion'>('sheet');
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [touchEndX, setTouchEndX] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'sheet' | 'photos' | 'updates' | 'about' | 'discussion'>('sheet');
   const [copiedLink, setCopiedLink] = useState(false);
   const [isFollowing, setIsFollowing] = useState(vehicle.owner.isFollowing || false);
 
@@ -73,7 +76,29 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [newModStatus, setNewModStatus] = useState<ModInstallStatus>('installed');
   const [newModNotes, setNewModNotes] = useState('');
 
-  // Photo Milestone state
+  // Editing existing modification state
+  const [editingModId, setEditingModId] = useState<string | null>(null);
+  const [editModBrand, setEditModBrand] = useState('');
+  const [editModPartName, setEditModPartName] = useState('');
+  const [editModCategory, setEditModCategory] = useState<ModificationCategory>('Engine & Performance');
+  const [editModNotes, setEditModNotes] = useState('');
+
+  // Add Pure Photo to Gallery state
+  const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+
+  // Vehicle Update state (separate from pure photo gallery)
+  const [isAddUpdateOpen, setIsAddUpdateOpen] = useState(false);
+  const [updateTitle, setUpdateTitle] = useState('');
+  const [updateDate, setUpdateDate] = useState('');
+  const [updateContent, setUpdateContent] = useState('');
+  const [updatePhotoUrl, setUpdatePhotoUrl] = useState('');
+  const [installModWithUpdate, setInstallModWithUpdate] = useState(false);
+  const [updateModCategory, setUpdateModCategory] = useState<ModificationCategory>('Engine & Performance');
+  const [updateModBrand, setUpdateModBrand] = useState('');
+  const [updateModPartName, setUpdateModPartName] = useState('');
+
+  // Photo Milestone state (legacy support)
   const [isAddMilestoneOpen, setIsAddMilestoneOpen] = useState(false);
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneDate, setMilestoneDate] = useState('');
@@ -193,6 +218,43 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     onUpdateVehicle({ ...vehicle, modifications: updatedMods });
   };
 
+  const handleStartEditMod = (mod: Modification) => {
+    setEditingModId(mod.id);
+    setEditModBrand(mod.brand);
+    setEditModPartName(mod.partName);
+    setEditModCategory(mod.category || 'Engine & Performance');
+    setEditModNotes(mod.description || '');
+  };
+
+  const handleCancelEditMod = () => {
+    setEditingModId(null);
+    setEditModBrand('');
+    setEditModPartName('');
+    setEditModNotes('');
+  };
+
+  const handleSaveEditMod = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingModId || !editModPartName.trim()) return;
+
+    const currentMods = vehicle.modifications || [];
+    const updatedMods = currentMods.map(m => {
+      if (m.id === editingModId) {
+        return {
+          ...m,
+          brand: editModBrand.trim() || 'Custom',
+          partName: editModPartName.trim(),
+          category: editModCategory,
+          description: editModNotes.trim() || undefined,
+        };
+      }
+      return m;
+    });
+
+    onUpdateVehicle?.({ ...vehicle, modifications: updatedMods });
+    setEditingModId(null);
+  };
+
   const handleAddModification = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newModPartName.trim()) return;
@@ -247,6 +309,122 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     setIsAddMilestoneOpen(false);
   };
 
+  // Pure Photo Gallery list (deduplicated)
+  const allGalleryPhotos = useMemo<string[]>(() => {
+    const list: string[] = [];
+    if (vehicle.primaryImage && !list.includes(vehicle.primaryImage)) {
+      list.push(vehicle.primaryImage);
+    }
+    (vehicle.galleryImages || []).forEach(img => {
+      if (img && !list.includes(img)) list.push(img);
+    });
+    (vehicle.photoMilestones || []).forEach(ms => {
+      if (ms.imageUrl && !list.includes(ms.imageUrl)) list.push(ms.imageUrl);
+    });
+    return list;
+  }, [vehicle]);
+
+  // Lightbox navigation & touch swipe
+  const handleNextLightbox = () => {
+    if (allGalleryPhotos.length <= 1) return;
+    setLightboxIndex(prev => (prev + 1) % allGalleryPhotos.length);
+  };
+
+  const handlePrevLightbox = () => {
+    if (allGalleryPhotos.length <= 1) return;
+    setLightboxIndex(prev => (prev - 1 + allGalleryPhotos.length) % allGalleryPhotos.length);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchEndX(null);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX === null || touchEndX === null) return;
+    const distance = touchStartX - touchEndX;
+    if (distance > 45) {
+      handleNextLightbox();
+    } else if (distance < -45) {
+      handlePrevLightbox();
+    }
+    setTouchStartX(null);
+    setTouchEndX(null);
+  };
+
+  // Add Pure Photo handler
+  const handleAddPurePhoto = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPhotoUrl.trim()) return;
+    const url = newPhotoUrl.trim();
+    const updatedGallery = [url, ...vehicle.galleryImages];
+    onUpdateVehicle?.({
+      ...vehicle,
+      galleryImages: updatedGallery,
+    });
+    setNewPhotoUrl('');
+    setIsAddPhotoOpen(false);
+  };
+
+  // Add Vehicle Update handler (with optional mod toggle auto-add)
+  const handleAddVehicleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!updateTitle.trim() && !updateContent.trim()) return;
+
+    const formattedDate = updateDate.trim() || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    let updatedMods = [...(vehicle.modifications || [])];
+    let installedPartLabel: string | undefined = undefined;
+
+    if (installModWithUpdate && updateModPartName.trim()) {
+      const newMod: Modification = {
+        id: `mod-${Date.now()}`,
+        category: updateModCategory,
+        brand: updateModBrand.trim() || 'Custom',
+        partName: updateModPartName.trim(),
+        status: 'installed',
+        description: `Installed with update: ${updateTitle.trim()}`,
+        installedDate: formattedDate,
+      };
+      updatedMods = [...updatedMods, newMod];
+      installedPartLabel = `${updateModBrand.trim() ? updateModBrand.trim() + ' ' : ''}${updateModPartName.trim()}`;
+    }
+
+    const newUpdate: BuildUpdate = {
+      id: `upd-${Date.now()}`,
+      vehicleId: vehicle.id,
+      title: updateTitle.trim() || 'Vehicle Update',
+      date: formattedDate,
+      content: updateContent.trim(),
+      images: updatePhotoUrl.trim() ? [updatePhotoUrl.trim()] : [],
+      modInstalled: installedPartLabel,
+      likesCount: 0,
+    };
+
+    const updatedBuildUpdates = [newUpdate, ...(vehicle.buildUpdates || [])];
+    const updatedGallery = updatePhotoUrl.trim() ? [updatePhotoUrl.trim(), ...vehicle.galleryImages] : vehicle.galleryImages;
+
+    onUpdateVehicle?.({
+      ...vehicle,
+      buildUpdates: updatedBuildUpdates,
+      modifications: updatedMods,
+      galleryImages: updatedGallery,
+    });
+
+    setUpdateTitle('');
+    setUpdateDate('');
+    setUpdateContent('');
+    setUpdatePhotoUrl('');
+    setInstallModWithUpdate(false);
+    setUpdateModBrand('');
+    setUpdateModPartName('');
+    setIsAddUpdateOpen(false);
+  };
+
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href);
     setCopiedLink(true);
@@ -298,7 +476,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   // SUB-RENDERERS
   // ----------------------------------------------------
 
-  // 1. Hero 6-Badge Spec Grid (Clean, Industrial, High Contrast)
+  // 1. Hero 6-Badge Spec Grid (Clean, Industrial, High Contrast, Word-Wrapping)
   const renderHeroSpecBadges = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
       {/* 1. Engine */}
@@ -306,7 +484,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           ENGINE
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase break-words leading-snug block mt-0.5">
           {vehicle.engine || 'Stock'}
         </span>
       </div>
@@ -316,7 +494,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           DRIVETRAIN
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase break-words leading-snug block mt-0.5">
           {vehicle.drivetrain || 'RWD'}
         </span>
       </div>
@@ -326,7 +504,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           HORSEPOWER
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-[#C8102E] uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-[#C8102E] uppercase break-words leading-snug block mt-0.5">
           {vehicle.horsepower || 'Factory Spec'}
         </span>
       </div>
@@ -336,7 +514,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           TRANSMISSION
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase break-words leading-snug block mt-0.5">
           {vehicle.transmission || 'Manual'}
         </span>
       </div>
@@ -346,7 +524,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           CHASSIS / TRIM
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase break-words leading-snug block mt-0.5">
           {vehicle.chassis || vehicle.trim || 'Standard'}
         </span>
       </div>
@@ -356,7 +534,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
           BUILD INTENT
         </span>
-        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase truncate block mt-0.5">
+        <span className="font-['Oswald'] text-sm sm:text-base font-bold text-white uppercase break-words leading-snug block mt-0.5">
           {vehicle.buildStatus || 'Street Build'}
         </span>
       </div>
@@ -380,11 +558,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           <div>
             <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white flex items-center gap-2">
               <Wrench className="w-5 h-5 text-[#C8102E]" />
-              <span>Modifications & Build Checklist</span>
+              <span>Modifications & Parts</span>
             </h3>
-            <p className="text-xs text-[#888888] font-mono mt-0.5">
-              Documented parts, install status, and performance upgrades.
-            </p>
           </div>
 
           {canManageVehicle && (
@@ -491,8 +666,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           </form>
         )}
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {/* Category Filter Pills - Wrapped on mobile */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pb-1">
           {modCategoriesList.map((cat) => (
             <button
               key={cat.key}
@@ -512,65 +687,142 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
         {/* Modifications List */}
         {filteredMods.length > 0 ? (
-          <div className="divide-y divide-[#333336] border border-[#38383a] bg-[#1a1a1c]">
+          <div className="space-y-3">
             {filteredMods.map((mod) => {
-              const status = mod.status || 'installed';
-              return (
-                <div key={mod.id} className="p-3 sm:p-4 flex items-start justify-between gap-3 hover:bg-[#202024] transition-colors">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-['Oswald'] text-sm sm:text-base font-bold uppercase text-white tracking-wide">
-                        {mod.brand} {mod.partName}
+              if (editingModId === mod.id) {
+                return (
+                  <form
+                    key={mod.id}
+                    onSubmit={handleSaveEditMod}
+                    className="p-4 bg-[#1a1a1c] border border-[#C8102E] space-y-3 shadow-md"
+                  >
+                    <div className="flex items-center justify-between pb-1 border-b border-[#333336]">
+                      <span className="font-['Oswald'] text-sm font-bold uppercase tracking-wider text-white">
+                        Edit Modification
                       </span>
-                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 bg-[#242428] text-[#aaaaaa] border border-[#38383a]">
-                        {mod.category}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditMod}
+                        className="text-xs font-mono text-[#888888] hover:text-white cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Brand</label>
+                        <input
+                          type="text"
+                          value={editModBrand}
+                          onChange={(e) => setEditModBrand(e.target.value)}
+                          placeholder="e.g. HKS, Ohlins, Volk"
+                          className="w-full bg-[#141416] border border-[#38383a] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Part Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editModPartName}
+                          onChange={(e) => setEditModPartName(e.target.value)}
+                          placeholder="e.g. Hi-Power Exhaust"
+                          className="w-full bg-[#141416] border border-[#38383a] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Category</label>
+                        <select
+                          value={editModCategory}
+                          onChange={(e) => setEditModCategory(e.target.value as ModificationCategory)}
+                          className="w-full bg-[#141416] border border-[#38383a] px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                        >
+                          <option value="Engine & Performance">Engine & Performance</option>
+                          <option value="Suspension & Chassis">Suspension & Chassis</option>
+                          <option value="Wheels & Tires">Wheels & Tires</option>
+                          <option value="Exterior & Aero">Exterior & Aero</option>
+                          <option value="Interior & Electronics">Interior & Electronics</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Notes / Specs</label>
+                      <input
+                        type="text"
+                        value={editModNotes}
+                        onChange={(e) => setEditModNotes(e.target.value)}
+                        placeholder="e.g. 70mm diameter, corner balanced"
+                        className="w-full bg-[#141416] border border-[#38383a] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCancelEditMod}
+                        className="px-3 py-1.5 bg-[#252528] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider cursor-pointer"
+                      >
+                        Save Changes
+                      </button>
+                    </div>
+                  </form>
+                );
+              }
+
+              return (
+                <div
+                  key={mod.id}
+                  className="p-3.5 sm:p-4 bg-[#1a1a1c] border border-[#38383a] flex items-start justify-between gap-3 hover:border-[#4c4c52] transition-colors"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h4 className="font-['Oswald'] text-base sm:text-lg font-bold uppercase text-white tracking-wide break-words leading-snug">
+                      {mod.brand ? `${mod.brand} ` : ''}{mod.partName}
+                    </h4>
+
                     {mod.description && (
-                      <p className="text-xs text-[#aaaaaa] font-mono leading-relaxed">
+                      <p className="text-xs sm:text-sm text-[#aaaaaa] font-['Inter'] leading-relaxed break-words whitespace-pre-line mt-1">
                         {mod.description}
                       </p>
                     )}
 
                     {mod.installedDate && (
-                      <span className="text-[10px] font-mono text-[#777777] block">
+                      <span className="text-[10px] font-mono text-[#777777] block mt-1">
                         Logged {mod.installedDate}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Status Badge with click-to-toggle for Owner */}
-                    <button
-                      type="button"
-                      disabled={!canManageVehicle}
-                      onClick={() => handleToggleModStatus(mod.id)}
-                      title={canManageVehicle ? "Click to toggle status (Installed / In Progress / Planned)" : undefined}
-                      className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border transition-all ${
-                        canManageVehicle ? 'cursor-pointer hover:scale-105' : 'cursor-default'
-                      } ${
-                        status === 'installed'
-                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-500/40'
-                          : status === 'in_progress'
-                          ? 'bg-amber-950/40 text-amber-400 border-amber-500/40'
-                          : 'bg-sky-950/40 text-sky-400 border-sky-500/40'
-                      }`}
-                    >
-                      {status === 'installed' ? '✓ Installed' : status === 'in_progress' ? '⏳ In Progress' : '📋 Planned'}
-                    </button>
+                  {canManageVehicle && (
+                    <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditMod(mod)}
+                        className="p-1.5 text-[#888888] hover:text-white bg-[#252528] hover:bg-[#333336] border border-[#3e3e42] transition-colors cursor-pointer"
+                        title="Edit modification"
+                        aria-label="Edit modification"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
 
-                    {canManageVehicle && (
                       <button
                         type="button"
                         onClick={() => handleDeleteMod(mod.id)}
-                        className="p-1 text-[#666666] hover:text-[#ef4444] transition-colors cursor-pointer"
+                        className="p-1.5 text-[#888888] hover:text-[#ef4444] bg-[#252528] hover:bg-red-950/40 border border-[#3e3e42] hover:border-red-900/40 transition-colors cursor-pointer"
                         title="Remove modification"
+                        aria-label="Remove modification"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -584,42 +836,42 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     );
   };
 
-  // 3. Factory Architecture & Baseline Specs Table
+  // 3. Details Table (Factory Architecture & Platform Specs)
   const renderFactoryArchitecture = () => (
     <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
       <h3 className="font-['Oswald'] text-lg font-bold uppercase tracking-wide text-white">
-        Factory Architecture & Platform Specs
+        Details
       </h3>
       <div className="border border-[#38383a] bg-[#1a1a1c] overflow-hidden">
         <table className="w-full text-xs font-mono">
           <tbody className="divide-y divide-[#2d2d30]">
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase w-5/12 sm:w-1/3">Year / Make / Model</td>
-              <td className="px-4 py-2.5 text-white font-bold">{vehicle.year} {vehicle.make} {vehicle.model}</td>
+              <td className="px-4 py-2.5 text-white font-bold break-words">{vehicle.year} {vehicle.make} {vehicle.model}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Trim Package</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.trim || 'Standard'}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.trim || 'Standard'}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Powertrain</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.engine}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.engine}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Transmission</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.transmission}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.transmission}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Drivetrain Layout</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.drivetrain}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.drivetrain}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Exterior Colorway</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.color}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.color}</td>
             </tr>
             <tr className="hover:bg-[#202024]">
               <td className="px-4 py-2.5 text-[#888888] uppercase">Garage Location</td>
-              <td className="px-4 py-2.5 text-white">{vehicle.owner.location}</td>
+              <td className="px-4 py-2.5 text-white break-words">{vehicle.owner.location}</td>
             </tr>
           </tbody>
         </table>
@@ -627,79 +879,50 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     </div>
   );
 
-  // 4. Photo Updates / Progression Timeline
-  const renderPhotoUpdates = () => (
+  // 4. Pure Photo Gallery (Photos Tab - Clean 2-column grid, zero text overlays)
+  const renderPurePhotoGallery = () => (
     <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-5 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#333336]">
-        <div>
-          <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white flex items-center gap-2">
-            <Camera className="w-5 h-5 text-[#C8102E]" />
-            <span>Updates & Build Progression</span>
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#333336]">
+        <div className="flex items-center gap-2">
+          <Camera className="w-5 h-5 text-[#C8102E]" />
+          <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+            Photos ({allGalleryPhotos.length})
           </h3>
-          <p className="text-xs text-[#888888] font-mono mt-0.5">
-            Visual milestones documenting parts installation, dyno sessions, and stance.
-          </p>
         </div>
 
         {canManageVehicle && (
           <button
             type="button"
-            onClick={() => setIsAddMilestoneOpen(!isAddMilestoneOpen)}
+            onClick={() => setIsAddPhotoOpen(!isAddPhotoOpen)}
             className="flex items-center justify-center gap-1.5 px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>{isAddMilestoneOpen ? 'Cancel' : 'Add Milestone Photo'}</span>
+            <span>{isAddPhotoOpen ? 'Cancel' : 'Add Photo'}</span>
           </button>
         )}
       </div>
 
-      {/* Add Milestone Photo Form */}
-      {isAddMilestoneOpen && (
-        <form onSubmit={handleAddMilestone} className="bg-[#1a1a1c] border border-[#444448] p-4 space-y-3">
+      {/* Inline Add Photo Form */}
+      {isAddPhotoOpen && (
+        <form onSubmit={handleAddPurePhoto} className="bg-[#1a1a1c] border border-[#444448] p-4 space-y-3">
           <span className="font-['Oswald'] text-sm font-bold uppercase tracking-wider text-white block">
-            Add Photo Milestone
+            Add Photo to Gallery
           </span>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Photo Image URL *</label>
-              <input
-                type="url"
-                required
-                placeholder="https://..."
-                value={milestoneImageUrl}
-                onChange={(e) => setMilestoneImageUrl(e.target.value)}
-                className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Milestone Title</label>
-              <input
-                type="text"
-                placeholder="e.g. Coilovers Installed & Corner Balanced"
-                value={milestoneTitle}
-                onChange={(e) => setMilestoneTitle(e.target.value)}
-                className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Caption / Description</label>
-            <textarea
-              rows={2}
-              placeholder="Details about the milestone, parts installed, or track day results..."
-              value={milestoneCaption}
-              onChange={(e) => setMilestoneCaption(e.target.value)}
+            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Image URL *</label>
+            <input
+              type="url"
+              required
+              placeholder="https://images.unsplash.com/..."
+              value={newPhotoUrl}
+              onChange={(e) => setNewPhotoUrl(e.target.value)}
               className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
             />
           </div>
-
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
-              onClick={() => setIsAddMilestoneOpen(false)}
+              onClick={() => setIsAddPhotoOpen(false)}
               className="px-3 py-1.5 bg-[#252528] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer"
             >
               Cancel
@@ -708,53 +931,251 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               type="submit"
               className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider cursor-pointer"
             >
-              Add Update
+              Upload to Gallery
             </button>
           </div>
         </form>
       )}
 
-      {/* Milestones Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {photoMilestones.map((ms, idx) => (
+      {/* Clean 2-Column Photo Grid with Zero Text Overlays */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        {allGalleryPhotos.map((imgUrl, idx) => (
           <div
-            key={ms.id || idx}
+            key={idx}
             onClick={() => {
-              setActiveLightboxImage(ms.imageUrl);
+              setLightboxIndex(idx);
               setLightboxOpen(true);
             }}
-            className="group relative border border-[#38383a] bg-[#1a1a1c] overflow-hidden cursor-pointer hover:border-[#C8102E] transition-all"
+            className="group relative aspect-[4/3] sm:aspect-[16/10] bg-black border border-[#38383a] overflow-hidden cursor-pointer hover:border-[#C8102E] transition-all"
+            title="Click to view full screen (swipeable)"
           >
-            <div className="aspect-[16/10] overflow-hidden bg-black">
-              <img
-                src={ms.imageUrl}
-                alt={ms.caption || 'Milestone photo'}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-3 space-y-1 bg-[#1e1e20] border-t border-[#333336]">
-              <div className="flex items-center justify-between text-[11px] font-mono text-[#888888]">
-                <span className="text-[#C8102E] font-bold uppercase">{ms.tag || `Milestone #${idx + 1}`}</span>
-                <span>{ms.milestoneDate}</span>
-              </div>
-              <p className="text-xs text-[#cccccc] font-mono line-clamp-2">
-                {ms.caption}
-              </p>
-            </div>
+            <img
+              src={imgUrl}
+              alt={`${vehicle.year} ${vehicle.make} ${vehicle.model} - Photo ${idx + 1}`}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
           </div>
         ))}
       </div>
     </div>
   );
 
-  // 5. Story Behind the Build
+  // 5. Separate Vehicle Updates Feed (with optional part auto-add)
+  const renderVehicleUpdates = () => (
+    <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#333336]">
+        <div className="flex items-center gap-2">
+          <Clock className="w-5 h-5 text-[#C8102E]" />
+          <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+            Vehicle Updates ({vehicle.buildUpdates?.length || 0})
+          </h3>
+        </div>
+
+        {canManageVehicle && (
+          <button
+            type="button"
+            onClick={() => setIsAddUpdateOpen(!isAddUpdateOpen)}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>{isAddUpdateOpen ? 'Cancel' : 'Post Vehicle Update'}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Inline Post Vehicle Update Form */}
+      {isAddUpdateOpen && (
+        <form onSubmit={handleAddVehicleUpdate} className="bg-[#1a1a1c] border border-[#444448] p-4 space-y-3.5">
+          <span className="font-['Oswald'] text-sm font-bold uppercase tracking-wider text-white block">
+            Post an Update for this Vehicle
+          </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Title *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Coilover install & dyno calibration"
+                value={updateTitle}
+                onChange={(e) => setUpdateTitle(e.target.value)}
+                className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Date Logged</label>
+              <input
+                type="text"
+                placeholder="e.g. Today or Oct 2024"
+                value={updateDate}
+                onChange={(e) => setUpdateDate(e.target.value)}
+                className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Notes / Work Performed *</label>
+            <textarea
+              rows={3}
+              required
+              placeholder="What did you do to the vehicle? Track day review, parts installation, corner balance details..."
+              value={updateContent}
+              onChange={(e) => setUpdateContent(e.target.value)}
+              className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Attached Photo URL (Optional)</label>
+            <input
+              type="url"
+              placeholder="https://..."
+              value={updatePhotoUrl}
+              onChange={(e) => setUpdatePhotoUrl(e.target.value)}
+              className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+            />
+          </div>
+
+          {/* Optional Mod Toggle that automatically adds to Modifications & Parts */}
+          <div className="p-3 bg-[#202024] border border-[#38383c] space-y-3">
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={installModWithUpdate}
+                onChange={(e) => setInstallModWithUpdate(e.target.checked)}
+                className="w-4 h-4 accent-[#C8102E] cursor-pointer"
+              />
+              <span className="text-xs font-mono text-white font-bold uppercase tracking-wider">
+                Installed a new part / modification
+              </span>
+            </label>
+
+            {installModWithUpdate && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#333336]">
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Part Name *</label>
+                  <input
+                    type="text"
+                    required={installModWithUpdate}
+                    placeholder="e.g. HKS Hi-Power Exhaust"
+                    value={updateModPartName}
+                    onChange={(e) => setUpdateModPartName(e.target.value)}
+                    className="w-full bg-[#141416] border border-[#38383a] px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Brand</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. HKS / Volk / Brembo"
+                    value={updateModBrand}
+                    onChange={(e) => setUpdateModBrand(e.target.value)}
+                    className="w-full bg-[#141416] border border-[#38383a] px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] mb-1">Category</label>
+                  <select
+                    value={updateModCategory}
+                    onChange={(e) => setUpdateModCategory(e.target.value as ModificationCategory)}
+                    className="w-full bg-[#141416] border border-[#38383a] px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E] font-mono"
+                  >
+                    <option value="Engine & Performance">Engine & Performance</option>
+                    <option value="Suspension & Chassis">Suspension & Chassis</option>
+                    <option value="Wheels & Tires">Wheels & Tires</option>
+                    <option value="Exterior & Aero">Exterior & Aero</option>
+                    <option value="Interior & Electronics">Interior & Electronics</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsAddUpdateOpen(false)}
+              className="px-3.5 py-1.5 bg-[#252528] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider cursor-pointer"
+            >
+              Publish Update
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Chronological Updates List */}
+      <div className="space-y-4">
+        {vehicle.buildUpdates && vehicle.buildUpdates.length > 0 ? (
+          vehicle.buildUpdates.map((upd, idx) => (
+            <div key={upd.id || idx} className="p-4 sm:p-5 bg-[#1a1a1c] border border-[#38383a] space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-xs font-mono px-2 py-0.5 bg-[#242428] text-[#aaaaaa] border border-[#38383a]">
+                      {upd.date}
+                    </span>
+                    {upd.modInstalled && (
+                      <span className="text-xs font-mono px-2 py-0.5 bg-emerald-950/40 text-emerald-400 border border-emerald-500/40 flex items-center gap-1 font-bold">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Installed: {upd.modInstalled}</span>
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-['Oswald'] text-base sm:text-lg font-bold uppercase text-white tracking-wide">
+                    {upd.title}
+                  </h4>
+                </div>
+              </div>
+
+              <p className="text-xs sm:text-sm text-[#cccccc] font-['Inter'] leading-relaxed whitespace-pre-line">
+                {upd.content}
+              </p>
+
+              {/* Attached Photos */}
+              {upd.images && upd.images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2">
+                  {upd.images.map((img, imgIdx) => (
+                    <div
+                      key={imgIdx}
+                      onClick={() => {
+                        const targetIdx = allGalleryPhotos.indexOf(img);
+                        setLightboxIndex(targetIdx >= 0 ? targetIdx : 0);
+                        setLightboxOpen(true);
+                      }}
+                      className="aspect-video bg-black border border-[#38383a] overflow-hidden cursor-pointer hover:border-[#C8102E] transition-all"
+                    >
+                      <img src={img} alt="Update milestone" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center border border-[#38383a] bg-[#1a1a1c] text-xs font-mono text-[#888888]">
+            No vehicle updates posted yet. {canManageVehicle ? 'Post your first update above!' : ''}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // 6. Story Behind the Build (Renamed to "About this [Vehicle Model]")
   const renderStorySection = () => (
     <div className="bg-[#242426] border border-[#38383a] p-5 sm:p-6 space-y-3 shadow-sm">
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#333336]">
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-[#C8102E]" />
           <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
-            The Story Behind This Build
+            About this {vehicle.model}
           </h3>
         </div>
         {canManageVehicle && (
@@ -996,7 +1417,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
             className="w-full h-full object-cover cursor-pointer"
             onClick={() => {
-              setActiveLightboxImage(vehicle.galleryImages[activeImageIndex] || vehicle.primaryImage);
+              setLightboxIndex(activeImageIndex);
               setLightboxOpen(true);
             }}
           />
@@ -1025,49 +1446,64 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
       {/* Primary Tabs Navigation Bar: Mobile Grid & Desktop Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6">
-        {/* Mobile Full-Width 4-Button Grid */}
-        <div className="grid grid-cols-4 gap-1 p-1 bg-[#1a1a1c] border border-[#38383a] sm:hidden">
+        {/* Mobile Full-Width 5-Button Grid */}
+        <div className="grid grid-cols-5 gap-1 p-1 bg-[#1a1a1c] border border-[#38383a] sm:hidden">
           <button
             type="button"
             onClick={() => setActiveTab('sheet')}
-            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+            className={`flex flex-col items-center justify-center py-2 px-0.5 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
               activeTab === 'sheet'
                 ? 'bg-[#C8102E] text-white shadow font-bold'
                 : 'bg-[#222225] text-[#9ba5b7] hover:text-white'
             }`}
           >
-            <Gauge className="w-4 h-4 mb-0.5 shrink-0" />
-            <span className="text-[10px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
-              Build Sheet
+            <Gauge className="w-3.5 h-3.5 mb-0.5 shrink-0" />
+            <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Specs
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('photos')}
+            className={`flex flex-col items-center justify-center py-2 px-0.5 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+              activeTab === 'photos'
+                ? 'bg-[#C8102E] text-white shadow font-bold'
+                : 'bg-[#222225] text-[#9ba5b7] hover:text-white'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 mb-0.5 shrink-0" />
+            <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Photos ({allGalleryPhotos.length})
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('updates')}
-            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+            className={`flex flex-col items-center justify-center py-2 px-0.5 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
               activeTab === 'updates'
                 ? 'bg-[#C8102E] text-white shadow font-bold'
                 : 'bg-[#222225] text-[#9ba5b7] hover:text-white'
             }`}
           >
-            <Camera className="w-4 h-4 mb-0.5 shrink-0" />
-            <span className="text-[10px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
-              Updates ({photoMilestones.length})
+            <Clock className="w-3.5 h-3.5 mb-0.5 shrink-0" />
+            <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+              Updates ({vehicle.buildUpdates?.length || 0})
             </span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('about')}
-            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+            className={`flex flex-col items-center justify-center py-2 px-0.5 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
               activeTab === 'about'
                 ? 'bg-[#C8102E] text-white shadow font-bold'
                 : 'bg-[#222225] text-[#9ba5b7] hover:text-white'
             }`}
           >
-            <BookOpen className="w-4 h-4 mb-0.5 shrink-0" />
-            <span className="text-[10px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+            <BookOpen className="w-3.5 h-3.5 mb-0.5 shrink-0" />
+            <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
               About
             </span>
           </button>
@@ -1075,14 +1511,14 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('discussion')}
-            className={`flex flex-col items-center justify-center py-2 px-1 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
+            className={`flex flex-col items-center justify-center py-2 px-0.5 text-center transition-all duration-150 active:scale-[0.98] cursor-pointer ${
               activeTab === 'discussion'
                 ? 'bg-[#C8102E] text-white shadow font-bold'
                 : 'bg-[#222225] text-[#9ba5b7] hover:text-white'
             }`}
           >
-            <MessageSquare className="w-4 h-4 mb-0.5 shrink-0" />
-            <span className="text-[10px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
+            <MessageSquare className="w-3.5 h-3.5 mb-0.5 shrink-0" />
+            <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
               Q&A ({vehicleComments.length})
             </span>
           </button>
@@ -1106,6 +1542,19 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveTab('photos')}
+              className={`py-3 sm:py-3.5 border-b-2 transition-colors relative cursor-pointer flex items-center gap-2 shrink-0 ${
+                activeTab === 'photos'
+                  ? 'border-[#C8102E] text-[#C8102E]'
+                  : 'border-transparent text-[#8d98ab] hover:text-white'
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>Photos ({allGalleryPhotos.length})</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('updates')}
               className={`py-3 sm:py-3.5 border-b-2 transition-colors relative cursor-pointer flex items-center gap-2 shrink-0 ${
                 activeTab === 'updates'
@@ -1113,8 +1562,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                   : 'border-transparent text-[#8d98ab] hover:text-white'
               }`}
             >
-              <Camera className="w-4 h-4" />
-              <span>Updates ({photoMilestones.length})</span>
+              <Clock className="w-4 h-4" />
+              <span>Updates ({vehicle.buildUpdates?.length || 0})</span>
             </button>
 
             <button
@@ -1154,28 +1603,40 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             
             {/* TAB: BUILD SHEET (Hero Spec Badges + Categorized Mod Checklist + Factory Specs) */}
             {activeTab === 'sheet' && (
-              <div className="space-y-6">
-                {renderHeroSpecBadges()}
-                {renderCategorizedMods()}
-                {renderFactoryArchitecture()}
+              <div className="flex flex-col space-y-6">
+                <div className="order-1">
+                  {renderHeroSpecBadges()}
+                </div>
+                {/* Details moved before Modifications & Parts on mobile */}
+                <div className="order-2 lg:order-3">
+                  {renderFactoryArchitecture()}
+                </div>
+                <div className="order-3 lg:order-2">
+                  {renderCategorizedMods()}
+                </div>
               </div>
             )}
 
-            {/* TAB: UPDATES */}
+            {/* TAB: PHOTOS (Pure 2-Column Photo Gallery, Zero Text Overlays) */}
+            {activeTab === 'photos' && (
+              <div className="space-y-6">
+                {renderPurePhotoGallery()}
+              </div>
+            )}
+
+            {/* TAB: UPDATES (Dedicated Updates Feed with Optional Mod Auto-Add) */}
             {activeTab === 'updates' && (
               <div className="space-y-6">
-                {renderPhotoUpdates()}
+                {renderVehicleUpdates()}
               </div>
             )}
 
-            {/* TAB: ABOUT & CREW */}
+            {/* TAB: ABOUT (Reordered: User, Build Crew & Sponsors, About this Model) */}
             {activeTab === 'about' && (
               <div className="space-y-6">
+                {renderOwnerSection()}
+                {renderCrewSection()}
                 {renderStorySection()}
-                <div className="space-y-6 lg:hidden">
-                  {renderOwnerSection()}
-                  {renderCrewSection()}
-                </div>
               </div>
             )}
 
@@ -1202,7 +1663,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                     onUpdateComment={onUpdateComment || (() => {})}
                     onDeleteComment={onDeleteComment || (() => {})}
                     onOpenLightbox={(img) => {
-                      setActiveLightboxImage(img);
+                      const idx = allGalleryPhotos.indexOf(img);
+                      setLightboxIndex(idx >= 0 ? idx : 0);
                       setLightboxOpen(true);
                     }}
                   />
@@ -1220,17 +1682,72 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         </div>
       </div>
 
-      {/* Lightbox Modal */}
-      {lightboxOpen && activeLightboxImage && (
+      {/* Lightbox Modal with Full Touch Swiping and Next/Prev Controls */}
+      {lightboxOpen && allGalleryPhotos.length > 0 && (
         <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-md cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-3 sm:p-6 backdrop-blur-md select-none"
           onClick={() => setLightboxOpen(false)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
+          {/* Top Bar: Counter & Close */}
+          <div className="absolute top-4 left-4 right-4 flex items-center justify-between text-white z-20 pointer-events-auto">
+            <span className="text-xs font-mono px-3 py-1 bg-black/80 border border-[#444] text-[#ddd]">
+              {lightboxIndex + 1} / {allGalleryPhotos.length}
+            </span>
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(false)}
+              className="p-2 bg-black/80 hover:bg-[#C8102E] border border-[#444] text-white cursor-pointer transition-colors"
+              aria-label="Close photo view"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Prev Photo Arrow */}
+          {allGalleryPhotos.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevLightbox();
+              }}
+              className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 p-3 bg-black/80 hover:bg-[#C8102E] border border-[#444] text-white text-xl transition-colors cursor-pointer z-20"
+              aria-label="Previous photo"
+            >
+              ‹
+            </button>
+          )}
+
+          {/* Fullscreen Image */}
           <img
-            src={activeLightboxImage}
-            alt="Fullscreen view"
-            className="max-w-full max-h-[90vh] object-contain border border-[#444446]"
+            src={allGalleryPhotos[lightboxIndex] || vehicle.primaryImage}
+            alt="Fullscreen photo"
+            className="max-w-full max-h-[85vh] object-contain border border-[#333336] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           />
+
+          {/* Next Photo Arrow */}
+          {allGalleryPhotos.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextLightbox();
+              }}
+              className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 p-3 bg-black/80 hover:bg-[#C8102E] border border-[#444] text-white text-xl transition-colors cursor-pointer z-20"
+              aria-label="Next photo"
+            >
+              ›
+            </button>
+          )}
+
+          {/* Mobile Swipe Hint */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[11px] font-mono text-[#888888] sm:hidden pointer-events-none">
+            Swipe left or right to browse photos
+          </div>
         </div>
       )}
 

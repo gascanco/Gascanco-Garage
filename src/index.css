@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Oswald", "Barlow Condensed", sans-serif;
-  --font-body: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-brand: "La Raptida", "La Rapida", "Barlow Condensed", sans-serif;
+  --font-display: "Oswald", sans-serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
   --color-gascanco-grey-base: #0e0e10;
@@ -11,6 +12,18 @@
   --color-gascanco-grey-border: #38383a;
   --color-gascanco-red: #C8102E;
   --color-gascanco-red-hover: #e01334;
+}
+
+.font-brand {
+  font-family: var(--font-brand);
+}
+
+.font-heading, .font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
 }
 
 /* Enforce sharp corners / zero radius across everything per specification */

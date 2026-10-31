@@ -1,6 +1,6 @@
 {
-  "summary":  "Comprehensive architectural plan to embed a prominent raised Add button into the bottom navigation bar, rename tabs to Live Feed and Builds & Rides, eliminate subtext and close buttons from the Add Modal, integrate vehicle build updates with auto-populating Live feed posts, replace the term Journal with Update, switch typography to Plus Jakarta Sans, and verify all interactive buttons and links.",
-  "updatedAt":  "2026-10-29T22:49:05.936562939Z",
+  "summary":  "Implementation plan for removing AI capabilities, updating typography (Inter, Oswald, La Raptida), centering the Add button, adding a social Share feature, limiting Community Builders to 10 random, splitting Vehicle Details into pure Photos gallery and Update feed with auto-mod integration, wrapping mod buttons on mobile, swipeable full-screen photo lightbox, and reordering the About section.",
+  "updatedAt":  "2026-10-31T12:43:12.372963441Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

@@ -53,6 +53,7 @@ export interface BuildUpdate {
   images: string[];
   likesCount: number;
   categoryTag?: string;
+  modInstalled?: string;
 }
 
 export interface Owner {

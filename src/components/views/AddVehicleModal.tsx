@@ -172,26 +172,12 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   const [eventDescription, setEventDescription] = useState('');
   const [eventImage, setEventImage] = useState('/src/assets/images/mazda_rx7_fd_1791130533675.jpg');
 
-  // Cover Image Source: 'upload' | 'gemini' | 'presets'
-  const [eventCoverSource, setEventCoverSource] = useState<'upload' | 'gemini' | 'presets'>('upload');
-  const [geminiPrompt, setGeminiPrompt] = useState('Cinematic sunrise mountain canyon cruise with high-performance sports cars, golden hour rim lighting, photorealistic 8k automotive photography');
-  const [geminiAspectRatio, setGeminiAspectRatio] = useState<'16:9' | '4:3' | '1:1'>('16:9');
-  const [isGeneratingGemini, setIsGeneratingGemini] = useState(false);
-  const [geminiError, setGeminiError] = useState<string | null>(null);
-  const [isQuotaError, setIsQuotaError] = useState(false);
+  // Cover Image Source: 'upload' | 'presets'
+  const [eventCoverSource, setEventCoverSource] = useState<'upload' | 'presets'>('upload');
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [uploadFileSize, setUploadFileSize] = useState<string | null>(null);
   const [originalUploadedImage, setOriginalUploadedImage] = useState<string | null>(null);
-  const [isCoverImageGemini, setIsCoverImageGemini] = useState(false);
-  const [isCoverImageEdited, setIsCoverImageEdited] = useState(false);
-  const [geminiModelUsed, setGeminiModelUsed] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  
-  // Image editing state with Gemini
-  const [isEditingWithGemini, setIsEditingWithGemini] = useState(false);
-  const [editPrompt, setEditPrompt] = useState('');
-  const [showEditSection, setShowEditSection] = useState(false);
-
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Category fallback images
@@ -208,7 +194,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   // Process uploaded image file
   const processUploadedFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setGeminiError('Please select a valid image file (PNG, JPG, WEBP)');
+      alert('Please select a valid image file (PNG, JPG, WEBP)');
       return;
     }
 
@@ -218,10 +204,6 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     
     setUploadFileName(file.name);
     setUploadFileSize(sizeStr);
-    setIsCoverImageGemini(false);
-    setIsCoverImageEdited(false);
-    setGeminiError(null);
-    setIsQuotaError(false);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -259,115 +241,18 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     }
   };
 
-  // Generate cover image with Gemini
-  const handleGenerateGeminiCover = async () => {
-    if (!geminiPrompt.trim() || isGeneratingGemini) return;
-    setIsGeneratingGemini(true);
-    setGeminiError(null);
-    setIsQuotaError(false);
-
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: geminiPrompt.trim(),
-          aspectRatio: geminiAspectRatio,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setIsQuotaError(!!data.isQuotaError);
-        throw new Error(data.error || 'Failed to generate image with Gemini');
-      }
-
-      if (data.imageUrl) {
-        setEventImage(data.imageUrl);
-        setIsCoverImageGemini(true);
-        setIsCoverImageEdited(false);
-        setGeminiModelUsed(data.model || 'gemini-3.1-flash-image-preview');
-        setUploadFileName(null);
-      } else {
-        throw new Error('No image was returned from Gemini');
-      }
-    } catch (err: any) {
-      console.error('Gemini image generation error:', err);
-      setGeminiError(err.message || 'Error creating image with Gemini. Please try again or upload a photo.');
-    } finally {
-      setIsGeneratingGemini(false);
-    }
-  };
-
-  // Edit image with Gemini (takes current eventImage as reference input and prompts for modifications)
-  const handleEditImageWithGemini = async () => {
-    if (!editPrompt.trim() || isEditingWithGemini || !eventImage) return;
-    setIsEditingWithGemini(true);
-    setGeminiError(null);
-    setIsQuotaError(false);
-
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: editPrompt.trim(),
-          inputImage: eventImage,
-          aspectRatio: geminiAspectRatio,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setIsQuotaError(!!data.isQuotaError);
-        throw new Error(data.error || 'Failed to edit image with Gemini');
-      }
-
-      if (data.imageUrl) {
-        setEventImage(data.imageUrl);
-        setIsCoverImageEdited(true);
-        setGeminiModelUsed(data.model || 'gemini-3.1-flash-image-preview');
-        setEditPrompt('');
-      } else {
-        throw new Error('No image was returned from Gemini');
-      }
-    } catch (err: any) {
-      console.error('Gemini image editing error:', err);
-      setGeminiError(err.message || 'Error editing image with Gemini. Please try again or upload a photo.');
-    } finally {
-      setIsEditingWithGemini(false);
-    }
-  };
-
   // Curated category fallback helper
   const handleApplyCuratedFallback = () => {
     const fallback = EVENT_CATEGORY_FALLBACKS[eventType] || '/src/assets/images/skyline_r34_gtr_1791130465206.jpg';
     setEventImage(fallback);
-    setGeminiError(null);
-    setIsQuotaError(false);
-    setIsCoverImageGemini(false);
-    setIsCoverImageEdited(false);
     setUploadFileName(null);
   };
 
-  // Revert edited image back to original upload
+  // Revert to original upload
   const handleRevertToOriginal = () => {
     if (originalUploadedImage) {
       setEventImage(originalUploadedImage);
-      setIsCoverImageEdited(false);
-      setGeminiError(null);
     }
-  };
-
-  // Auto-fill prompt from event title and location
-  const handleSuggestPrompt = () => {
-    const t = eventTitle.trim() || 'Automotive Meet & Cruise';
-    const loc = eventLocation.trim() || 'scenic mountain road';
-    setGeminiPrompt(`Cinematic wide-angle automotive photography of ${t} (${eventType}) at ${loc}. High performance modified sports cars, golden hour rim lighting, photorealistic 8k, automotive magazine style.`);
   };
 
   // ----------------------------------------------------
@@ -1872,7 +1757,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                         onChange={e => {
                           const newType = e.target.value as GarageEvent['eventType'];
                           setEventType(newType);
-                          if (!uploadFileName && !isCoverImageGemini && !isCoverImageEdited) {
+                          if (!uploadFileName) {
                             setEventImage(EVENT_CATEGORY_FALLBACKS[newType] || eventImage);
                           }
                         }}
@@ -1957,473 +1842,192 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                         Event Cover Image *
                       </label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-[#aaaaaa] px-2 py-0.5 bg-[#1e1e1e] border border-[#3d3d3d]">
-                        {geminiAspectRatio}
-                      </span>
-                    </div>
                   </div>
 
-              {/* Source Switcher Buttons: Upload Photo | Create with Gemini | Presets */}
-              <div className="grid grid-cols-3 gap-1 bg-[#1a1a1a] p-1 border border-[#3d3d3d]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEventCoverSource('upload');
-                    setGeminiError(null);
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    eventCoverSource === 'upload'
-                      ? 'bg-[#C8102E] text-white shadow'
-                      : 'text-[#aaaaaa] hover:text-white hover:bg-[#252525]'
-                  }`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Photo</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEventCoverSource('gemini');
-                    setGeminiError(null);
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    eventCoverSource === 'gemini'
-                      ? 'bg-[#C8102E] text-white shadow'
-                      : 'text-[#aaaaaa] hover:text-white hover:bg-[#252525]'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Use Gemini AI</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEventCoverSource('presets');
-                    setGeminiError(null);
-                  }}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    eventCoverSource === 'presets'
-                      ? 'bg-[#C8102E] text-white shadow'
-                      : 'text-[#aaaaaa] hover:text-white hover:bg-[#252525]'
-                  }`}
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Presets</span>
-                </button>
-              </div>
-
-              {/* Live Preview Banner */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#181818] border border-[#444444] shadow-inner group">
-                <img
-                  src={eventImage}
-                  alt="Event Cover Preview"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-                
-                {/* Source Badge overlay */}
-                <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                  <span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-black/85 text-white border border-[#444444] backdrop-blur-xs flex items-center gap-1.5">
-                    {isCoverImageEdited ? (
-                      <>
-                        <Wand2 className="w-3 h-3 text-[#ff4d6a]" />
-                        <span>Edited with Gemini AI</span>
-                      </>
-                    ) : isCoverImageGemini ? (
-                      <>
-                        <Sparkles className="w-3 h-3 text-amber-400" />
-                        <span>Created with Gemini AI</span>
-                      </>
-                    ) : uploadFileName ? (
-                      <>
-                        <Upload className="w-3 h-3 text-[#ff4d6a]" />
-                        <span className="truncate max-w-[150px]">{uploadFileName}</span>
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="w-3 h-3 text-[#888888]" />
-                        <span>Cover Preview</span>
-                      </>
-                    )}
-                  </span>
-
-                  {geminiModelUsed && (isCoverImageGemini || isCoverImageEdited) && (
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono text-[#bbbbbb] bg-[#1a1a1a]/90 border border-[#383838]">
-                      {geminiModelUsed}
-                    </span>
-                  )}
-                </div>
-
-                {/* Event overlay preview */}
-                <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-xs font-mono text-white/95">
-                  <div className="truncate pr-2">
-                    <span className="font-['Oswald'] uppercase font-bold text-sm block tracking-wide truncate">
-                      {eventTitle || 'Your Event Title'}
-                    </span>
-                    <span className="text-[11px] text-[#cccccc] opacity-80">
-                      {eventDate} • {eventTime}
-                    </span>
-                  </div>
-                  <span className="px-2 py-0.5 text-[10px] font-['Oswald'] font-bold uppercase bg-[#C8102E] text-white shrink-0 shadow">
-                    {eventType}
-                  </span>
-                </div>
-              </div>
-
-              {/* Error / Quota Notice Banner */}
-              {geminiError && (
-                <div className="p-3.5 bg-red-950/40 border border-red-800/80 text-xs font-mono space-y-2">
-                  <div className="flex items-start gap-2 text-red-200">
-                    <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-bold">{geminiError}</p>
-                      {isQuotaError && (
-                        <p className="text-[11px] text-red-300/80 mt-1">
-                          Gemini image models (such as gemini-3.1-flash-image-preview) require an enabled API key with billing/quota in AI Studio secrets.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-red-900/40">
+                  {/* Source Switcher Buttons: Upload Photo | Presets */}
+                  <div className="grid grid-cols-2 gap-1 bg-[#1a1a1a] p-1 border border-[#3d3d3d]">
                     <button
                       type="button"
-                      onClick={handleApplyCuratedFallback}
-                      className="px-3 py-1 bg-[#C8102E] hover:bg-[#e01334] text-white text-[11px] font-['Oswald'] uppercase font-bold tracking-wider cursor-pointer"
+                      onClick={() => setEventCoverSource('upload')}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        eventCoverSource === 'upload'
+                          ? 'bg-[#C8102E] text-white shadow'
+                          : 'text-[#aaaaaa] hover:text-white hover:bg-[#252525]'
+                      }`}
                     >
-                      Use Curated {eventType} Cover
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload Photo</span>
                     </button>
+
                     <button
                       type="button"
-                      onClick={() => {
-                        setEventCoverSource('upload');
-                        setGeminiError(null);
-                      }}
-                      className="px-3 py-1 bg-[#252525] hover:bg-[#333333] border border-[#555555] text-white text-[11px] font-mono cursor-pointer"
+                      onClick={() => setEventCoverSource('presets')}
+                      className={`flex items-center justify-center gap-1.5 py-2.5 text-xs font-['Oswald'] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        eventCoverSource === 'presets'
+                          ? 'bg-[#C8102E] text-white shadow'
+                          : 'text-[#aaaaaa] hover:text-white hover:bg-[#252525]'
+                      }`}
                     >
-                      Upload a Photo Instead
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ========================================================
-                  TAB 1: UPLOAD PHOTO
-                 ======================================================== */}
-              {eventCoverSource === 'upload' && (
-                <div className="p-4 bg-[#1a1a1a] border border-[#3d3d3d] space-y-4">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-
-                  {/* Drag & Drop Zone */}
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
-                      isDragOver
-                        ? 'border-[#C8102E] bg-[#C8102E]/10'
-                        : 'border-[#444444] hover:border-[#C8102E] bg-[#222222]'
-                    }`}
-                  >
-                    <Upload className="w-8 h-8 text-[#C8102E]" />
-                    <p className="font-['Oswald'] text-sm sm:text-base uppercase text-white font-bold">
-                      Click or drag & drop a photo from your device
-                    </p>
-                    <p className="text-xs text-[#888888] font-mono">
-                      Supports JPG, PNG, WEBP (Recommended aspect ratio: 16:9)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fileInputRef.current?.click();
-                      }}
-                      className="mt-1 px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
-                    >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Upload Photo / Camera</span>
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>Presets</span>
                     </button>
                   </div>
 
-                  {/* Upload info & Actions */}
-                  {uploadFileName && (
-                    <div className="flex items-center justify-between text-xs font-mono text-[#bbbbbb] px-1 bg-[#242424] p-2.5 border border-[#333333]">
-                      <div className="flex items-center gap-2 truncate">
-                        <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
-                        <span className="truncate">File: <strong className="text-white">{uploadFileName}</strong></span>
-                        {uploadFileSize && <span className="text-[#777777]">({uploadFileSize})</span>}
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-[#C8102E] hover:underline cursor-pointer"
-                        >
-                          Change
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUploadFileName(null);
-                            setUploadFileSize(null);
-                            setOriginalUploadedImage(null);
-                            handleApplyCuratedFallback();
-                          }}
-                          className="text-[#888888] hover:text-white cursor-pointer"
-                          title="Remove uploaded photo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Edit Uploaded Photo with Gemini AI Feature */}
-                  <div className="pt-3 border-t border-[#333333] space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono uppercase text-[#cccccc] flex items-center gap-1.5 font-bold">
-                        <Wand2 className="w-3.5 h-3.5 text-[#C8102E]" />
-                        Edit Uploaded Photo with Gemini AI
-                      </span>
-                      {isCoverImageEdited && originalUploadedImage && (
-                        <button
-                          type="button"
-                          onClick={handleRevertToOriginal}
-                          className="text-[11px] font-mono text-[#888888] hover:text-white flex items-center gap-1 cursor-pointer"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Revert to Original
-                        </button>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] text-[#888888] font-mono">
-                      Enhance this photo with Gemini image-to-image editing (e.g. add lighting, weather, or film aesthetics).
-                    </p>
-
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={editPrompt}
-                        onChange={(e) => setEditPrompt(e.target.value)}
-                        placeholder="e.g. Add golden hour rim lighting and rain reflections on asphalt..."
-                        className="flex-1 bg-[#222222] border border-[#444444] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E] font-sans"
-                      />
-                      <button
-                        type="button"
-                        disabled={isEditingWithGemini || !editPrompt.trim()}
-                        onClick={handleEditImageWithGemini}
-                        className="px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] disabled:opacity-50 text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0 flex items-center gap-1.5"
-                      >
-                        {isEditingWithGemini ? (
+                  {/* Live Preview Banner */}
+                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#181818] border border-[#444444] shadow-inner group">
+                    <img
+                      src={eventImage}
+                      alt="Event Cover Preview"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                    
+                    {/* Source Badge overlay */}
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-black/85 text-white border border-[#444444] backdrop-blur-xs flex items-center gap-1.5">
+                        {uploadFileName ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Editing...</span>
+                            <Upload className="w-3.5 h-3.5 text-[#ff4d6a]" />
+                            <span className="truncate max-w-[150px]">{uploadFileName}</span>
                           </>
                         ) : (
                           <>
-                            <Wand2 className="w-3.5 h-3.5" />
-                            <span>Apply Edit</span>
+                            <ImageIcon className="w-3.5 h-3.5 text-[#888888]" />
+                            <span>Cover Preview</span>
                           </>
                         )}
-                      </button>
-                    </div>
-
-                    {/* Quick photo edit suggestions */}
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {[
-                        'Golden hour rim lighting',
-                        'Wet asphalt reflections',
-                        'Vintage 90s film aesthetic',
-                        'Night meet with neon glows',
-                        'Motion blur track action',
-                      ].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setEditPrompt(preset)}
-                          className="px-2 py-0.5 text-[10px] font-mono bg-[#252525] hover:bg-[#333333] text-[#cccccc] hover:text-white border border-[#444444] transition-colors cursor-pointer"
-                        >
-                          + {preset}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ========================================================
-                  TAB 2: CREATE WITH GEMINI AI
-                 ======================================================== */}
-              {eventCoverSource === 'gemini' && (
-                <div className="p-4 bg-[#1a1a1a] border border-[#3d3d3d] space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-[#cccccc] flex items-center gap-1.5 font-bold">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      GEMINI PROMPT (gemini-3.1-flash-image-preview)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleSuggestPrompt}
-                      className="text-[11px] font-mono text-[#C8102E] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Auto-fill from Event Details
-                    </button>
-                  </div>
-
-                  <textarea
-                    rows={2}
-                    value={geminiPrompt}
-                    onChange={(e) => setGeminiPrompt(e.target.value)}
-                    placeholder="Describe the automotive scene (e.g. sports cars driving at sunrise through winding canyon roads, 8k automotive photography...)"
-                    className="w-full bg-[#222222] border border-[#444444] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E] font-sans"
-                  />
-
-                  {/* Aspect Ratio & Model config */}
-                  <div className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-[#888888]">Banner Ratio:</span>
-                    <div className="flex items-center gap-1.5">
-                      {(['16:9', '4:3', '1:1'] as const).map((ratio) => (
-                        <button
-                          key={ratio}
-                          type="button"
-                          onClick={() => setGeminiAspectRatio(ratio)}
-                          className={`px-2.5 py-1 text-[10px] font-mono border transition-colors cursor-pointer ${
-                            geminiAspectRatio === ratio
-                              ? 'bg-[#C8102E] text-white border-[#C8102E]'
-                              : 'bg-[#222222] text-[#888888] border-[#444444] hover:text-white'
-                          }`}
-                        >
-                          {ratio}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Preset prompt inspiration pills */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono text-[#777777] uppercase block">
-                      Quick automotive scene presets:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        'Sunrise Canyon Run',
-                        'Track Day Paddock',
-                        'Night Street Meet & Neons',
-                        'Cars & Coffee Overlook',
-                        'Overland Mountain Trail',
-                        'Dyno Day Garage Pull'
-                      ].map((chip) => (
-                        <button
-                          key={chip}
-                          type="button"
-                          onClick={() => setGeminiPrompt(`Cinematic wide-angle ${chip.toLowerCase()} with modified performance sports cars, golden hour rim lighting, photorealistic 8k automotive photography`)}
-                          className="px-2 py-0.5 text-[10px] font-mono bg-[#252525] hover:bg-[#333333] text-[#cccccc] hover:text-white border border-[#444444] transition-colors cursor-pointer"
-                        >
-                          + {chip}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Generate Button */}
-                  <button
-                    type="button"
-                    disabled={isGeneratingGemini || !geminiPrompt.trim()}
-                    onClick={handleGenerateGeminiCover}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#C8102E] hover:bg-[#e01334] disabled:opacity-50 text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                  >
-                    {isGeneratingGemini ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Generating Cover with Gemini AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>Generate Cover with Gemini</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* If image was created with Gemini, show follow-up edit option */}
-                  {isCoverImageGemini && (
-                    <div className="pt-3 border-t border-[#333333] space-y-2">
-                      <span className="text-[11px] font-mono text-[#bbbbbb] flex items-center gap-1.5">
-                        <Wand2 className="w-3 h-3 text-[#C8102E]" />
-                        Refine / Edit this Generated Cover:
                       </span>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editPrompt}
-                          onChange={(e) => setEditPrompt(e.target.value)}
-                          placeholder="e.g. Add headlights turned on, make background rain wetter..."
-                          className="flex-1 bg-[#222222] border border-[#444444] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-                        />
+                    </div>
+
+                    {/* Event overlay preview */}
+                    <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-xs font-mono text-white/95">
+                      <div className="truncate pr-2">
+                        <span className="font-['Oswald'] uppercase font-bold text-sm block tracking-wide truncate">
+                          {eventTitle || 'Your Event Title'}
+                        </span>
+                        <span className="text-[11px] text-[#cccccc] opacity-80">
+                          {eventDate} • {eventTime}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 text-[10px] font-['Oswald'] font-bold uppercase bg-[#C8102E] text-white shrink-0 shadow">
+                        {eventType}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* TAB 1: UPLOAD PHOTO */}
+                  {eventCoverSource === 'upload' && (
+                    <div className="p-4 bg-[#1a1a1a] border border-[#3d3d3d] space-y-4">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+
+                      {/* Drag & Drop Zone */}
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`border-2 border-dashed p-6 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                          isDragOver
+                            ? 'border-[#C8102E] bg-[#C8102E]/10'
+                            : 'border-[#444444] hover:border-[#C8102E] bg-[#222222]'
+                        }`}
+                      >
+                        <Upload className="w-8 h-8 text-[#C8102E]" />
+                        <p className="font-['Oswald'] text-sm sm:text-base uppercase text-white font-bold">
+                          Click or drag & drop a photo from your device
+                        </p>
+                        <p className="text-xs text-[#888888] font-mono">
+                          Supports JPG, PNG, WEBP (Recommended aspect ratio: 16:9)
+                        </p>
                         <button
                           type="button"
-                          disabled={isEditingWithGemini || !editPrompt.trim()}
-                          onClick={handleEditImageWithGemini}
-                          className="px-3 py-1.5 bg-[#333333] hover:bg-[#444444] text-white text-[11px] font-mono uppercase cursor-pointer shrink-0 disabled:opacity-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                          className="mt-1 px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white font-['Oswald'] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
                         >
-                          {isEditingWithGemini ? 'Refining...' : 'Refine'}
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Upload Photo / Camera</span>
                         </button>
+                      </div>
+
+                      {/* Upload info & Actions */}
+                      {uploadFileName && (
+                        <div className="flex items-center justify-between text-xs font-mono text-[#bbbbbb] px-1 bg-[#242424] p-2.5 border border-[#333333]">
+                          <div className="flex items-center gap-2 truncate">
+                            <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                            <span className="truncate">File: <strong className="text-white">{uploadFileName}</strong></span>
+                            {uploadFileSize && <span className="text-[#777777]">({uploadFileSize})</span>}
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 ml-2">
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-[#C8102E] hover:underline cursor-pointer"
+                            >
+                              Change
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadFileName(null);
+                                setUploadFileSize(null);
+                                setOriginalUploadedImage(null);
+                                handleApplyCuratedFallback();
+                              }}
+                              className="text-[#888888] hover:text-white cursor-pointer"
+                              title="Remove uploaded photo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 2: PRESETS & CURATED COVERS */}
+                  {eventCoverSource === 'presets' && (
+                    <div className="p-4 bg-[#1a1a1a] border border-[#3d3d3d] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-[#888888]">
+                          Select from community garage photography:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleApplyCuratedFallback}
+                          className="text-[11px] font-mono text-[#C8102E] hover:underline cursor-pointer"
+                        >
+                          Use Default for {eventType}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {PRESET_GALLERY_IMAGES.map((p, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setEventImage(p.url);
+                              setUploadFileName(null);
+                            }}
+                            className={`relative aspect-video border overflow-hidden cursor-pointer ${
+                              eventImage === p.url ? 'border-[#C8102E] ring-1 ring-[#C8102E]' : 'border-[#444444] opacity-70 hover:opacity-100'
+                            }`}
+                          >
+                            <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* ========================================================
-                  TAB 3: PRESETS & CUSTOM URL
-                 ======================================================== */}
-              {eventCoverSource === 'presets' && (
-                <div className="p-4 bg-[#1a1a1a] border border-[#3d3d3d] space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-[#888888]">
-                      Select from community garage photography:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleApplyCuratedFallback}
-                      className="text-[11px] font-mono text-[#C8102E] hover:underline cursor-pointer"
-                    >
-                      Use Default for {eventType}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {PRESET_GALLERY_IMAGES.map((p, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setEventImage(p.url);
-                          setIsCoverImageGemini(false);
-                          setIsCoverImageEdited(false);
-                          setUploadFileName(null);
-                        }}
-                        className={`relative aspect-video border overflow-hidden cursor-pointer ${
-                          eventImage === p.url ? 'border-[#C8102E] ring-1 ring-[#C8102E]' : 'border-[#444444] opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
                 </div>
               </div>
             </div>

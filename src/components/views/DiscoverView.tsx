@@ -104,7 +104,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       }
     });
 
-    return Array.from(map.values()).slice(0, 10);
+    const builders = Array.from(map.values());
+    return [...builders].sort(() => Math.random() - 0.5).slice(0, 10);
   }, [vehicles]);
 
   // Filtered vehicle list: Category, Location & Search based
