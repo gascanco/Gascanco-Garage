@@ -1918,7 +1918,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         <option value="">None / No Vehicle Tagged</option>
                         {userVehicles.map((v) => (
                           <option key={v.id} value={v.id}>
-                            {v.year} {v.make} {v.model} {v.trim ? `• ${v.trim}` : ''} {v.nickname ? `("${v.nickname}")` : ''}
+                            {v.year} {v.make} {v.model}
                           </option>
                         ))}
                       </select>

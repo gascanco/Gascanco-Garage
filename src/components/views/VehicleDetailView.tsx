@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Vehicle, Owner, PostComment, BuildCrewOrSponsor, isHardAdmin,
   Modification, ModificationCategory, ModInstallStatus, PhotoMilestone,
@@ -75,6 +75,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [newModPartName, setNewModPartName] = useState('');
   const [newModStatus, setNewModStatus] = useState<ModInstallStatus>('installed');
   const [newModNotes, setNewModNotes] = useState('');
+  const [newModPhoto, setNewModPhoto] = useState<string>('');
+  const newModFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Editing existing modification state
   const [editingModId, setEditingModId] = useState<string | null>(null);
@@ -82,6 +84,25 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [editModPartName, setEditModPartName] = useState('');
   const [editModCategory, setEditModCategory] = useState<ModificationCategory>('Engine & Performance');
   const [editModNotes, setEditModNotes] = useState('');
+  const [editModPhoto, setEditModPhoto] = useState<string>('');
+  const editModFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleModPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') {
+        if (isEdit) {
+          setEditModPhoto(ev.target.result);
+        } else {
+          setNewModPhoto(ev.target.result);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Add Pure Photo to Gallery state
   const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
@@ -220,10 +241,11 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
   const handleStartEditMod = (mod: Modification) => {
     setEditingModId(mod.id);
-    setEditModBrand(mod.brand);
+    setEditModBrand(mod.brand || '');
     setEditModPartName(mod.partName);
     setEditModCategory(mod.category || 'Engine & Performance');
     setEditModNotes(mod.description || '');
+    setEditModPhoto(mod.photoUrl || '');
   };
 
   const handleCancelEditMod = () => {
@@ -231,6 +253,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     setEditModBrand('');
     setEditModPartName('');
     setEditModNotes('');
+    setEditModPhoto('');
   };
 
   const handleSaveEditMod = (e: React.FormEvent) => {
@@ -246,6 +269,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           partName: editModPartName.trim(),
           category: editModCategory,
           description: editModNotes.trim() || undefined,
+          photoUrl: editModPhoto.trim() || undefined,
         };
       }
       return m;
@@ -253,6 +277,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
     onUpdateVehicle?.({ ...vehicle, modifications: updatedMods });
     setEditingModId(null);
+    setEditModPhoto('');
   };
 
   const handleAddModification = (e: React.FormEvent) => {
@@ -262,10 +287,11 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     const newMod: Modification = {
       id: `mod-${Date.now()}`,
       category: newModCategory,
-      brand: newModBrand.trim() || 'Custom / Unspecified',
+      brand: newModBrand.trim() || 'Custom',
       partName: newModPartName.trim(),
       status: newModStatus,
       description: newModNotes.trim() || undefined,
+      photoUrl: newModPhoto.trim() || undefined,
       installedDate: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
     };
 
@@ -276,6 +302,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     setNewModPartName('');
     setNewModBrand('');
     setNewModNotes('');
+    setNewModPhoto('');
     setIsAddModOpen(false);
   };
 
@@ -320,6 +347,9 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     });
     (vehicle.photoMilestones || []).forEach(ms => {
       if (ms.imageUrl && !list.includes(ms.imageUrl)) list.push(ms.imageUrl);
+    });
+    (vehicle.modifications || []).forEach(m => {
+      if (m.photoUrl && !list.includes(m.photoUrl)) list.push(m.photoUrl);
     });
     return list;
   }, [vehicle]);
@@ -373,7 +403,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   // Add Vehicle Update handler (with optional mod toggle auto-add)
   const handleAddVehicleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!updateTitle.trim() && !updateContent.trim()) return;
+    // Relaxed validation: user can submit headline, notes, or photo
+    if (!updateTitle.trim() && !updateContent.trim() && !updatePhotoUrl.trim()) return;
 
     const formattedDate = updateDate.trim() || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
@@ -387,7 +418,8 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         brand: updateModBrand.trim() || 'Custom',
         partName: updateModPartName.trim(),
         status: 'installed',
-        description: `Installed with update: ${updateTitle.trim()}`,
+        description: `Installed with update: ${updateTitle.trim() || 'Milestone update'}`,
+        photoUrl: updatePhotoUrl.trim() || undefined,
         installedDate: formattedDate,
       };
       updatedMods = [...updatedMods, newMod];
@@ -399,20 +431,18 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
       vehicleId: vehicle.id,
       title: updateTitle.trim() || 'Vehicle Update',
       date: formattedDate,
-      content: updateContent.trim(),
+      content: updateContent.trim() || 'Logged milestone update.',
       images: updatePhotoUrl.trim() ? [updatePhotoUrl.trim()] : [],
       modInstalled: installedPartLabel,
       likesCount: 0,
     };
 
     const updatedBuildUpdates = [newUpdate, ...(vehicle.buildUpdates || [])];
-    const updatedGallery = updatePhotoUrl.trim() ? [updatePhotoUrl.trim(), ...vehicle.galleryImages] : vehicle.galleryImages;
 
     onUpdateVehicle?.({
       ...vehicle,
       buildUpdates: updatedBuildUpdates,
       modifications: updatedMods,
-      galleryImages: updatedGallery,
     });
 
     setUpdateTitle('');
@@ -598,11 +628,10 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Brand *</label>
+                <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Brand (Optional)</label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. HKS, Ohlins, Volk"
+                  placeholder="e.g. HKS, Ohlins, OEM"
                   value={newModBrand}
                   onChange={(e) => setNewModBrand(e.target.value)}
                   className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
@@ -614,7 +643,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Hi-Power Exhaust"
+                  placeholder="e.g. Hi-Power Exhaust or Rear Wing Removal"
                   value={newModPartName}
                   onChange={(e) => setNewModPartName(e.target.value)}
                   className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
@@ -646,6 +675,68 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                   className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
                 />
               </div>
+            </div>
+
+            {/* 1 Photo for modification */}
+            <div className="space-y-1.5 pt-1 border-t border-[#2a2a2d]">
+              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-[#C8102E]" />
+                  <span>Part Photo (1 Photo, Optional)</span>
+                </span>
+                {newModPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => setNewModPhoto('')}
+                    className="text-[10px] text-[#ef4444] hover:underline flex items-center gap-0.5 cursor-pointer font-mono"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>Remove</span>
+                  </button>
+                )}
+              </label>
+
+              <input
+                ref={newModFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleModPhotoUpload(e, false)}
+                className="hidden"
+              />
+
+              {newModPhoto ? (
+                <div className="relative aspect-video sm:aspect-[21/9] max-h-36 bg-black border border-[#38383a] overflow-hidden group">
+                  <img src={newModPhoto} alt="Part preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setNewModPhoto('')}
+                    className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-[#C8102E] text-white transition-colors cursor-pointer"
+                    title="Remove photo"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => newModFileInputRef.current?.click()}
+                    className="sm:col-span-4 px-3 py-2 bg-[#202024] hover:bg-[#28282c] border border-dashed border-[#444448] hover:border-[#888888] text-white text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-[#C8102E]" />
+                    <span>Upload Photo</span>
+                  </button>
+                  <div className="sm:col-span-8">
+                    <input
+                      type="url"
+                      placeholder="Or paste photo URL (https://...)"
+                      value={newModPhoto}
+                      onChange={(e) => setNewModPhoto(e.target.value)}
+                      className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
@@ -758,6 +849,68 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                       />
                     </div>
 
+                    {/* 1 Photo for modification edit */}
+                    <div className="space-y-1.5 pt-1 border-t border-[#2a2a2d]">
+                      <label className="block text-[10px] font-mono uppercase text-[#aaaaaa] flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Camera className="w-3 h-3 text-[#C8102E]" />
+                          <span>Part Photo (1 Photo, Optional)</span>
+                        </span>
+                        {editModPhoto && (
+                          <button
+                            type="button"
+                            onClick={() => setEditModPhoto('')}
+                            className="text-[10px] text-[#ef4444] hover:underline flex items-center gap-0.5 cursor-pointer font-mono"
+                          >
+                            <X className="w-3 h-3" />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </label>
+
+                      <input
+                        ref={editModFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleModPhotoUpload(e, true)}
+                        className="hidden"
+                      />
+
+                      {editModPhoto ? (
+                        <div className="relative aspect-video sm:aspect-[21/9] max-h-32 bg-black border border-[#38383a] overflow-hidden group">
+                          <img src={editModPhoto} alt="Part preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setEditModPhoto('')}
+                            className="absolute top-1.5 right-1.5 p-1 bg-black/80 hover:bg-[#C8102E] text-white transition-colors cursor-pointer"
+                            title="Remove photo"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => editModFileInputRef.current?.click()}
+                            className="sm:col-span-4 px-3 py-1.5 bg-[#202024] hover:bg-[#28282c] border border-dashed border-[#444448] hover:border-[#888888] text-white text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Upload className="w-3 h-3 text-[#C8102E]" />
+                            <span>Upload Photo</span>
+                          </button>
+                          <div className="sm:col-span-8">
+                            <input
+                              type="url"
+                              placeholder="Or paste photo URL (https://...)"
+                              value={editModPhoto}
+                              onChange={(e) => setEditModPhoto(e.target.value)}
+                              className="w-full bg-[#141416] border border-[#38383a] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-1">
                       <button
                         type="button"
@@ -782,22 +935,39 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                   key={mod.id}
                   className="p-3.5 sm:p-4 bg-[#1a1a1c] border border-[#38383a] flex items-start justify-between gap-3 hover:border-[#4c4c52] transition-colors"
                 >
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h4 className="font-['Oswald'] text-base sm:text-lg font-bold uppercase text-white tracking-wide break-words leading-snug">
-                      {mod.brand ? `${mod.brand} ` : ''}{mod.partName}
-                    </h4>
-
-                    {mod.description && (
-                      <p className="text-xs sm:text-sm text-[#aaaaaa] font-['Inter'] leading-relaxed break-words whitespace-pre-line mt-1">
-                        {mod.description}
-                      </p>
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {mod.photoUrl && (
+                      <div
+                        onClick={() => {
+                          const targetIdx = allGalleryPhotos.indexOf(mod.photoUrl!);
+                          setLightboxIndex(targetIdx >= 0 ? targetIdx : 0);
+                          setLightboxOpen(true);
+                        }}
+                        className="w-16 h-16 sm:w-20 sm:h-20 aspect-square bg-black border border-[#38383a] overflow-hidden cursor-pointer hover:border-[#C8102E] transition-all shrink-0 group relative"
+                        title="Click to view full photo"
+                      >
+                        <img src={mod.photoUrl} alt={mod.partName} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                      </div>
                     )}
 
-                    {mod.installedDate && (
-                      <span className="text-[10px] font-mono text-[#777777] block mt-1">
-                        Logged {mod.installedDate}
-                      </span>
-                    )}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <h4 className="font-['Oswald'] text-base sm:text-lg font-bold uppercase text-white tracking-wide break-words leading-snug">
+                        {mod.brand ? `${mod.brand} ` : ''}{mod.partName}
+                      </h4>
+
+                      {mod.description && (
+                        <p className="text-xs sm:text-sm text-[#aaaaaa] font-['Inter'] leading-relaxed break-words whitespace-pre-line mt-1">
+                          {mod.description}
+                        </p>
+                      )}
+
+                      {mod.installedDate && (
+                        <span className="text-[10px] font-mono text-[#777777] block mt-1">
+                          Logged {mod.installedDate}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {canManageVehicle && (
