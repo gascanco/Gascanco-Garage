@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Vehicle, VehicleCategory, Owner, BuildUpdate, 
   GarageEvent, CommunityPost, isHardAdmin, CommunityPoll,
-  MarketplaceItem, MarketplaceVehicleType, MarketplacePartCategory
+  MarketplaceItem, MarketplaceVehicleType, MarketplacePartCategory,
+  Modification
 } from '../../types/garage';
 import { normalizeCityState, POPULAR_US_CITIES } from '../../utils/dateAndLocationUtils';
 import { ImageUploadDropzone } from '../common/ImageUploadDropzone';
@@ -10,8 +11,8 @@ import {
   X, Check, ArrowRight, ArrowLeft, Camera, Sparkles, 
   Wrench, Calendar, BookOpen, MessageSquare, Car, MapPin, 
   Clock, Tag, Flame, Plus, ChevronRight, Upload, Loader2, 
-  Image as ImageIcon, RefreshCw, RotateCcw, AlertCircle, 
-  Wand2, Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube,
+  ImageIcon, RefreshCw, RotateCcw, AlertCircle, 
+  Sliders, Trash2, Play, Link2, ExternalLink, Globe, Youtube,
   ShoppingBag, ShieldCheck, BarChart3, Vote, Package
 } from 'lucide-react';
 
@@ -25,7 +26,7 @@ interface AddVehicleModalProps {
   onVehicleAdded: (newVehicle: Vehicle) => void;
   onVehicleUpdated?: (updatedVehicle: Vehicle) => void;
   editingVehicle?: Vehicle | null;
-  onBuildUpdateAdded?: (payload: { vehicleId: string; update: BuildUpdate }) => void;
+  onBuildUpdateAdded?: (payload: { vehicleId: string; update: BuildUpdate; newMod?: Modification }) => void;
   onEventAdded?: (newEvent: GarageEvent) => void;
   onPostAdded?: (newPost: CommunityPost) => void;
   onPollAdded?: (newPoll: CommunityPoll) => void;
@@ -483,9 +484,12 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
   // 8. UPDATE A VEHICLE STATE
   // ----------------------------------------------------
   const [updateVehicleId, setUpdateVehicleId] = useState<string>('');
-  const [updateTitle, setUpdateTitle] = useState<string>('');
   const [updateCategoryTag, setUpdateCategoryTag] = useState<string>('Performance & Engine');
   const [updateContent, setUpdateContent] = useState<string>('');
+  const [updateIncludeMod, setUpdateIncludeMod] = useState<boolean>(false);
+  const [updateModPartName, setUpdateModPartName] = useState<string>('');
+  const [updateModCategory, setUpdateModCategory] = useState<string>('Performance & Engine');
+  const [updateModBrand, setUpdateModBrand] = useState<string>('');
   const [updateImages, setUpdateImages] = useState<string[]>([]);
   const [isUpdateDragOver, setIsUpdateDragOver] = useState(false);
   const updateFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -527,33 +531,61 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
       return;
     }
     
-    // Relaxed validation: user can provide headline or content or photos
-    if (!updateTitle.trim() && !updateContent.trim() && updateImages.length === 0) {
-      alert('Please provide an update headline, notes, or at least one photo.');
+    // Relaxed validation: user can provide notes, mod, or photos
+    if (!updateContent.trim() && !updateModPartName.trim() && updateImages.length === 0) {
+      alert('Please provide update notes, installed part details, or at least one photo.');
       return;
     }
 
     const targetVeh = userVehicles.find(v => v.id === targetVehId);
+    const vehicleLabel = targetVeh ? `${targetVeh.year} ${targetVeh.make} ${targetVeh.model}` : 'Vehicle';
     const finalImages = updateImages; // Strictly ONLY photos uploaded to this current post
 
+    const effectiveContent = updateContent.trim() 
+      || (updateIncludeMod && updateModPartName.trim() 
+          ? `Installed ${updateModPartName.trim()}${updateModBrand.trim() ? ` (${updateModBrand.trim()})` : ''} on ${vehicleLabel}.` 
+          : `Vehicle update on ${vehicleLabel}.`);
+
+    const updateId = `upd-${Date.now()}`;
     const newUpdate: BuildUpdate = {
-      id: `upd-${Date.now()}`,
+      id: updateId,
       vehicleId: targetVehId,
-      title: updateTitle.trim() || (targetVeh ? `${targetVeh.make} ${targetVeh.model} Update` : 'Vehicle Update'),
+      title: vehicleLabel,
       date: 'Just now',
       categoryTag: updateCategoryTag,
-      content: updateContent.trim() || 'Logged milestone update.',
+      content: effectiveContent,
       images: finalImages,
       likesCount: 0,
     };
+
+    let newMod: Modification | undefined;
+    if (updateIncludeMod && updateModPartName.trim()) {
+      newMod = {
+        id: `mod-${Date.now()}`,
+        category: updateModCategory as any,
+        brand: updateModBrand.trim() || 'Custom',
+        partName: updateModPartName.trim(),
+        status: 'installed',
+        description: updateContent.trim() || undefined,
+        photoUrl: finalImages[0] || undefined,
+        installedDate: 'Just now',
+      };
+    }
 
     if (onBuildUpdateAdded) {
       onBuildUpdateAdded({
         vehicleId: targetVehId,
         update: newUpdate,
+        newMod,
       });
     }
 
+    // Reset update state
+    setUpdateContent('');
+    setUpdateIncludeMod(false);
+    setUpdateModPartName('');
+    setUpdateModBrand('');
+    setUpdateImages([]);
     handleCloseModal();
   };
 
@@ -653,11 +685,11 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handle adding vehicle photos up to 5
+  // Handle adding vehicle photos up to 20
   const handleAddVehiclePhotos = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const currentCount = vehiclePhotos.length;
-    const remainingSlots = 5 - currentCount;
+    const remainingSlots = 20 - currentCount;
     if (remainingSlots <= 0) return;
 
     const validFiles = Array.from(files)
@@ -670,7 +702,7 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
         if (typeof e.target?.result === 'string') {
           const res = e.target.result;
           setVehiclePhotos(prev => {
-            if (prev.length >= 5) return prev;
+            if (prev.length >= 20) return prev;
             return [...prev, res];
           });
         }
@@ -884,9 +916,11 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
     setMktPhotos([]);
     setMktPrimaryPhotoIndex(0);
     setUpdateVehicleId('');
-    setUpdateTitle('');
     setUpdateCategoryTag('Performance & Engine');
     setUpdateContent('');
+    setUpdateIncludeMod(false);
+    setUpdateModPartName('');
+    setUpdateModBrand('');
     setUpdateImages([]);
     onClose();
   };
@@ -1101,40 +1135,86 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                     </select>
                   </div>
 
-                  {/* Headline / Title & Category Tag */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
-                        Update Headline (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Installed Tein Flex Z Coilovers & Corner Balanced"
-                        value={updateTitle}
-                        onChange={(e) => setUpdateTitle(e.target.value)}
-                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white placeholder-[#666666] focus:outline-none focus:border-[#C8102E]"
-                      />
-                    </div>
+                  {/* Category Tag */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
+                      Category Tag
+                    </label>
+                    <select
+                      value={updateCategoryTag}
+                      onChange={(e) => setUpdateCategoryTag(e.target.value)}
+                      className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
+                    >
+                      <option value="Performance & Engine">Performance & Engine</option>
+                      <option value="Suspension & Handling">Suspension & Handling</option>
+                      <option value="Brakes, Wheels & Tires">Brakes, Wheels & Tires</option>
+                      <option value="Exterior & Aero">Exterior & Aero</option>
+                      <option value="Interior & Safety">Interior & Safety</option>
+                      <option value="Maintenance & Track Prep">Maintenance & Track Prep</option>
+                      <option value="Dyno & Tuning">Dyno & Tuning</option>
+                    </select>
+                  </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-mono uppercase tracking-wider text-[#aaaaaa] font-bold">
-                        Category Tag
-                      </label>
-                      <select
-                        value={updateCategoryTag}
-                        onChange={(e) => setUpdateCategoryTag(e.target.value)}
-                        className="w-full bg-[#1c1c1c] border border-[#444444] px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#C8102E]"
-                      >
-                        <option value="Performance & Engine">Performance & Engine</option>
-                        <option value="Suspension & Handling">Suspension & Handling</option>
-                        <option value="Brakes, Wheels & Tires">Brakes, Wheels & Tires</option>
-                        <option value="Exterior & Aero">Exterior & Aero</option>
-                        <option value="Interior & Safety">Interior & Safety</option>
-                        <option value="Maintenance & Track Prep">Maintenance & Track Prep</option>
-                        <option value="Dyno & Tuning">Dyno & Tuning</option>
-                        <option value="Delivery & Milestone">Delivery & Milestone</option>
-                      </select>
-                    </div>
+                  {/* Compact Mod Input (Auto-adds to Modifications & Parts and syndicates to feed) */}
+                  <div className="p-3.5 bg-[#18181a] border border-[#38383c] space-y-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={updateIncludeMod}
+                        onChange={(e) => setUpdateIncludeMod(e.target.checked)}
+                        className="w-4 h-4 accent-[#C8102E] rounded-none cursor-pointer"
+                      />
+                      <span className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                        Installed a new part / modification
+                      </span>
+                    </label>
+                    {updateIncludeMod && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-[#2a2a2e]">
+                        <div>
+                          <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1 font-bold">
+                            Part Name *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Borla ATAK Cat-Back Exhaust"
+                            value={updateModPartName}
+                            onChange={(e) => setUpdateModPartName(e.target.value)}
+                            className="w-full bg-[#141416] border border-[#444444] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1 font-bold">
+                            Category
+                          </label>
+                          <select
+                            value={updateModCategory}
+                            onChange={(e) => setUpdateModCategory(e.target.value)}
+                            className="w-full bg-[#141416] border border-[#444444] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                          >
+                            <option value="Engine & Performance">Engine & Performance</option>
+                            <option value="Suspension & Chassis">Suspension & Chassis</option>
+                            <option value="Wheels & Tires">Wheels & Tires</option>
+                            <option value="Brakes">Brakes</option>
+                            <option value="Exhaust">Exhaust</option>
+                            <option value="Exterior & Aero">Exterior & Aero</option>
+                            <option value="Interior & Electronics">Interior & Electronics</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">
+                            Brand / Manufacturer (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Borla, Tein, Garrett, Brembo"
+                            value={updateModBrand}
+                            onChange={(e) => setUpdateModBrand(e.target.value)}
+                            className="w-full bg-[#141416] border border-[#444444] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Work Description / Story */}
@@ -2882,14 +2962,14 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                       </label>
                     </div>
                     <span className="text-xs font-mono text-[#aaaaaa] bg-[#1a1a1a] px-2.5 py-1 border border-[#3d3d3d]">
-                      {vehiclePhotos.length} / 5
+                      {vehiclePhotos.length} / 20
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-6 items-start">
                     {/* Single Upload & Drag n' Drop Box */}
                     <div className={vehiclePhotos.length > 0 ? "md:col-span-5 space-y-3" : "md:col-span-12"}>
-                      {vehiclePhotos.length < 5 ? (
+                      {vehiclePhotos.length < 20 ? (
                         <div>
                           <input
                             ref={vehiclePhotoInputRef}
@@ -2927,14 +3007,14 @@ export const AddVehicleModal: React.FC<AddVehicleModalProps> = ({
                               Drop photos here or tap to upload
                             </span>
                             <span className="text-[11px] font-mono text-[#888888]">
-                              {vehiclePhotos.length === 0 ? 'Upload up to 5 photos' : `Add up to ${5 - vehiclePhotos.length} more`}
+                              {vehiclePhotos.length === 0 ? 'Upload up to 20 photos' : `Add up to ${20 - vehiclePhotos.length} more`}
                             </span>
                           </div>
                         </div>
                       ) : (
                         <div className="p-4 bg-[#1a1a1a] border border-[#383838] text-center text-xs font-mono text-[#10b981]">
                           <Check className="w-5 h-5 mx-auto mb-1" />
-                          <span>Maximum 5 photos uploaded</span>
+                          <span>Maximum 20 photos uploaded</span>
                         </div>
                       )}
                     </div>

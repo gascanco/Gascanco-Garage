@@ -269,31 +269,19 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
         <div className="absolute top-2 left-2 right-2 flex items-center justify-between pointer-events-none">
           <span />
 
-          {variant === 'my-garage' && (
+          {variant === 'my-garage' && onEdit && (
             <div className="flex items-center gap-1.5 pointer-events-auto">
-              <span className={`text-[10px] sm:text-xs font-mono px-2 py-0.5 sm:px-2.5 sm:py-1 font-bold uppercase shadow-sm ${
-                vehicle.visibility === 'public' 
-                  ? 'bg-[#10b981]/90 text-white' 
-                  : 'bg-[#4b5563]/90 text-white'
-              }`}>
-                {vehicle.visibility}
-              </span>
-              <span className="text-[10px] sm:text-xs font-mono px-2 py-0.5 sm:px-2.5 sm:py-1 font-bold uppercase bg-[#C8102E] text-white shadow-sm">
-                {(vehicle.modifications?.length || 0)} MODS
-              </span>
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(vehicle.id);
-                  }}
-                  className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 bg-black/80 hover:bg-[#C8102E] text-[10px] sm:text-xs font-['Oswald'] font-bold uppercase text-white transition-colors cursor-pointer"
-                >
-                  <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                  <span>Edit</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(vehicle.id);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 bg-black/85 hover:bg-[#C8102E] text-[10px] sm:text-xs font-['Oswald'] font-bold uppercase text-white transition-colors cursor-pointer border border-white/20 shadow-sm"
+              >
+                <Edit className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>Edit</span>
+              </button>
             </div>
           )}
         </div>
@@ -329,15 +317,15 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({
           </div>
         </div>
 
-        {/* Right Side: Builder Name & Location or My Garage Build Sheet prompt */}
+        {/* Right Side: Builder Name & Location or My Garage Details prompt */}
         {variant === 'my-garage' ? (
           <div className="flex flex-col items-end text-right shrink-0 space-y-0.5">
             <span className="text-xs font-['Oswald'] font-bold text-[#C8102E] uppercase tracking-wider group-hover:underline flex items-center gap-1">
-              <span>Build Sheet</span>
+              <span>Details</span>
               <ArrowRight className="w-3 h-3" />
             </span>
             <span className="text-[11px] font-mono text-[#888888]">
-              {vehicle.horsepower || vehicle.engine}
+              {(vehicle.modifications?.length || 0)} Mods
             </span>
           </div>
         ) : showLocation && (

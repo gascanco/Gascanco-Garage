@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for removing AI capabilities, updating typography (Inter, Oswald, La Raptida), centering the Add button, adding a social Share feature, limiting Community Builders to 10 random, splitting Vehicle Details into pure Photos gallery and Update feed with auto-mod integration, wrapping mod buttons on mobile, swipeable full-screen photo lightbox, and reordering the About section.",
-  "updatedAt":  "2026-10-31T12:43:12.372963441Z",
+  "summary":  "Implementation plan for Live Feed post cards upgrade, Builds & Rides filter truncation fixes, ADD Modal post streamlining, single-post build update syndication with compact mod auto-add, URL input removal in favor of drag-and-drop/file upload, 20-photo vehicle limit, 50-mod limit, removal of public/private toggles across the app, and Facebook Messenger link fix.",
+  "updatedAt":  "2026-11-01T11:20:40.181936804Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

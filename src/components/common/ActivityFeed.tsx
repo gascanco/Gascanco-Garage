@@ -80,13 +80,25 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onExploreEvents,
   onSelectEvent,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
-  const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Categories');
+  const [selectedLocation, setSelectedLocation] = useState<string>('Locations');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
   const [playingYoutubeId, setPlayingYoutubeId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(10);
+
+  // Body text expand/collapse state
+  const [expandedPostIds, setExpandedPostIds] = useState<Set<string>>(new Set());
+
+  const toggleExpandPost = (id: string) => {
+    setExpandedPostIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Threaded Comments Expanded State
   const [expandedCommentItemIds, setExpandedCommentItemIds] = useState<Set<string>>(new Set());
@@ -482,6 +494,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
 
       if (veh.buildUpdates && veh.buildUpdates.length > 0) {
         veh.buildUpdates.forEach((upd, uIndex) => {
+          // Deduplicate against community posts so an update is only published once to the feed
+          const isAlreadyInPosts = posts.some(p => p.id === upd.id || (p.vehicleId === veh.id && p.content === upd.content));
+          if (isAlreadyInPosts) return;
+
           const { timestamp: updTs, display: updDisp } = parseDateToTimestamp(upd.date, uIndex * 2 + 1);
           list.push({
             id: `act-upd-${upd.id}`,
@@ -491,13 +507,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
             vehicleId: veh.id,
             vehicleName: `${veh.year} ${veh.make} ${veh.model}`,
             owner: veh.owner,
-            title: upd.title,
+            title: '',
             description: upd.content,
-            badge: 'Build Update',
-            photoUrl: (upd.images && upd.images.length > 0) ? upd.images[0] : veh.primaryImage,
+            badge: `${veh.year} ${veh.make} ${veh.model}`,
+            photoUrl: (upd.images && upd.images.length > 0) ? upd.images[0] : undefined,
             images: upd.images,
             likesCount: upd.likesCount || 0,
             postCategory: 'Build Updates',
+            postId: upd.id,
           });
         });
       }
@@ -515,13 +532,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
         set.add(extractStateName(a.owner.location));
       }
     });
-    return ['All Locations', ...Array.from(set).sort()];
+    return ['Locations', ...Array.from(set).sort()];
   }, [activities]);
 
   // Categories list for Live Feed
   const availableCategories = useMemo(() => {
     return [
-      'All Categories',
+      'Categories',
       'Sponsored Drops',
       'Community Posts',
       'Community Polls',
@@ -531,28 +548,28 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
   }, []);
 
   const clearFilters = () => {
-    setSelectedCategory('All Categories');
-    setSelectedLocation('All Locations');
+    setSelectedCategory('Categories');
+    setSelectedLocation('Locations');
     setSearchQuery('');
     setIsSearchOpen(false);
   };
 
-  const hasActiveFilters = selectedCategory !== 'All Categories' || selectedLocation !== 'All Locations' || searchQuery !== '';
+  const hasActiveFilters = selectedCategory !== 'Categories' || selectedLocation !== 'Locations' || searchQuery !== '';
 
   // Filter & Search (Category, Location, and Search query based)
   const filteredActivities = useMemo(() => {
     let result = activities.filter(act => {
       // 1. Category Filter
-      if (selectedCategory !== 'All Categories') {
+      if (selectedCategory !== 'Categories') {
         if (selectedCategory === 'Sponsored Drops' && !act.isAdvertisement && act.postCategory !== 'Sponsored Drop') return false;
         if (selectedCategory === 'Community Posts' && (act.type !== 'post' || act.isAdvertisement)) return false;
         if (selectedCategory === 'Community Polls' && act.type !== 'poll') return false;
-        if (selectedCategory === 'Build Updates' && act.type !== 'build_update' && act.type !== 'modification') return false;
+        if (selectedCategory === 'Build Updates' && act.type !== 'build_update' && act.type !== 'post') return false;
         if (selectedCategory === 'Event News' && act.type !== 'event') return false;
       }
 
       // 2. Location Filter (States only)
-      if (selectedLocation !== 'All Locations') {
+      if (selectedLocation !== 'Locations') {
         const stateName = extractStateName(act.owner?.location);
         if (stateName.toLowerCase() !== selectedLocation.toLowerCase()) return false;
       }
@@ -622,9 +639,9 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                       </option>
                     ))}
                   </select>
-                  {selectedCategory !== 'All Categories' && (
+                  {selectedCategory !== 'Categories' && (
                     <button
-                      onClick={() => setSelectedCategory('All Categories')}
+                      onClick={() => setSelectedCategory('Categories')}
                       className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
                       title="Clear category filter"
                     >
@@ -952,13 +969,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                         e.stopPropagation();
                         onSelectVehicle(act.vehicleId!);
                       }}
-                      className="text-xs font-mono text-[#aaaaaa] hover:text-[#C8102E] transition-colors truncate max-w-[200px] cursor-pointer"
+                      className="flex items-center gap-1.5 text-xs font-['Oswald'] font-bold uppercase text-[#cccccc] hover:text-[#C8102E] transition-colors truncate max-w-[220px] cursor-pointer"
                     >
-                      {act.vehicleName}
+                      <Car className="w-3.5 h-3.5 text-[#C8102E] shrink-0" />
+                      <span className="truncate">{act.vehicleName}</span>
                     </button>
                   ) : (
                     <span className="text-[10px] font-mono uppercase text-[#777777] tracking-wider">
-                      {isEvent ? 'Event' : act.badge}
+                      {isEvent ? 'Event' : (act.badge === 'Build Update' ? 'Update' : act.badge)}
                     </span>
                   )}
                 </div>
@@ -967,18 +985,24 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                 {isPost ? (
                   /* Specific Post Layout: Content First, Link Previews, Multi-Photo Gallery - All Media Extends Full Width of Card */
                   <div className="flex flex-col">
-                    {(act.title || act.description) && (
-                      <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 space-y-2">
-                        {act.title && (
-                          <h3 className="font-['Oswald'] text-lg sm:text-xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-snug">
-                            {act.title}
-                          </h3>
-                        )}
-
-                        {act.description && (
-                          <p className="text-sm text-[#e0e0e0] leading-relaxed whitespace-pre-line">
-                            {act.description}
-                          </p>
+                    {act.description && (
+                      <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 space-y-1.5">
+                        <p className={`text-sm sm:text-base text-[#e0e0e0] leading-relaxed whitespace-pre-line ${
+                          expandedPostIds.has(act.id) ? '' : 'line-clamp-3'
+                        }`}>
+                          {act.description}
+                        </p>
+                        {act.description.length > 140 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpandPost(act.id);
+                            }}
+                            className="text-xs font-mono text-[#C8102E] hover:underline cursor-pointer flex items-center gap-1 font-bold pt-0.5"
+                          >
+                            <span>{expandedPostIds.has(act.id) ? 'Show less' : 'Click to expand'}</span>
+                          </button>
                         )}
                       </div>
                     )}
@@ -1251,15 +1275,26 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                       {/* Text Details */}
                       <div className={`${act.photoUrl ? 'md:col-span-7' : 'md:col-span-12'} space-y-2`}>
-                        <h3 className="font-['Oswald'] text-lg sm:text-xl font-bold uppercase text-white group-hover:text-[#C8102E] transition-colors leading-snug">
-                          {act.title}
-                        </h3>
-
-                        {/* Description - clean 2 lines max */}
                         {act.description && (
-                          <p className="text-xs sm:text-sm text-[#aaaaaa] leading-relaxed line-clamp-2">
-                            {act.description}
-                          </p>
+                          <div>
+                            <p className={`text-sm sm:text-base text-[#e0e0e0] leading-relaxed whitespace-pre-line ${
+                              expandedPostIds.has(act.id) ? '' : 'line-clamp-3'
+                            }`}>
+                              {act.description}
+                            </p>
+                            {act.description.length > 140 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpandPost(act.id);
+                                }}
+                                className="mt-1 text-xs font-mono text-[#C8102E] hover:underline cursor-pointer flex items-center gap-1 font-bold"
+                              >
+                                <span>{expandedPostIds.has(act.id) ? 'Show less' : 'Click to expand'}</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -1325,9 +1360,24 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                           General Post
                         </span>
                       )
+                    ) : act.vehicleName ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (act.vehicleId) onSelectVehicle(act.vehicleId);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-mono text-[#bbbbbb] hover:text-[#C8102E] transition-colors truncate max-w-[280px] cursor-pointer group/veh"
+                        title={`Vehicle: ${act.vehicleName}`}
+                      >
+                        <Car className="w-3.5 h-3.5 text-[#C8102E] shrink-0" />
+                        <span className="font-['Oswald'] font-bold uppercase tracking-wider text-white group-hover/veh:text-[#C8102E] truncate">
+                          {act.vehicleName}
+                        </span>
+                      </button>
                     ) : (
                       <span className="text-[11px] font-['Oswald'] uppercase tracking-wider text-[#777777] font-semibold">
-                        {isEvent ? (act.eventData?.eventType || 'Meet') : (act.badge || 'Update')}
+                        {isEvent ? (act.eventData?.eventType || 'Meet') : 'Enthusiast Vehicle'}
                       </span>
                     )}
                   </div>

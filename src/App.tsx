@@ -6,7 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Vehicle, ActiveView, Owner, GarageEvent, CommunityPost, 
-  BuildUpdate, PostComment, SpotlightConfig, CommunityPoll, MarketplaceItem 
+  BuildUpdate, PostComment, SpotlightConfig, CommunityPoll, MarketplaceItem,
+  Modification 
 } from './types/garage';
 import { 
   INITIAL_VEHICLES, CURRENT_MOCK_USER, INITIAL_EVENTS, 
@@ -151,28 +152,31 @@ export default function App() {
     setActiveView({ type: 'vehicle-detail', vehicleId: newVehicle.id });
   };
 
-  // 2. Add build update with automatic Live Feed syndication
-  const handleBuildUpdateAdded = (payload: { vehicleId: string; update: BuildUpdate }) => {
+  // 2. Add build update with automatic Live Feed syndication & optional Modification auto-add
+  const handleBuildUpdateAdded = (payload: { vehicleId: string; update: BuildUpdate; newMod?: Modification }) => {
     const targetVeh = vehicles.find(v => v.id === payload.vehicleId);
     const vehicleLabel = targetVeh ? `${targetVeh.year} ${targetVeh.make} ${targetVeh.model}` : 'Project Vehicle';
 
     setVehicles(prev => prev.map(v => {
       if (v.id === payload.vehicleId) {
+        const existingMods = v.modifications || [];
+        const updatedMods = payload.newMod ? [payload.newMod, ...existingMods].slice(0, 50) : existingMods;
         return {
           ...v,
           buildUpdates: [payload.update, ...(v.buildUpdates || [])],
+          modifications: updatedMods,
           updatedAt: new Date().toISOString().split('T')[0]
         };
       }
       return v;
     }));
 
-    // Auto-populate matching post on the Live Feed
+    // Auto-populate ONE single matching post on the Live Feed by the user
+    // Strictly with only the photos uploaded for this current post, no separate headline
     const autoPost: CommunityPost = {
-      id: `post-upd-${Date.now()}`,
-      title: `${vehicleLabel}: ${payload.update.title}`,
+      id: payload.update.id,
       content: payload.update.content,
-      category: 'Shop Talk',
+      category: 'Build Updates',
       author: currentUser,
       dateStr: 'Just now',
       vehicleId: payload.vehicleId,
@@ -206,12 +210,29 @@ export default function App() {
   // 5. Update community post
   const handleUpdatePost = (updatedPost: CommunityPost) => {
     setCommunityPosts(prev => prev.map(p => (p.id === updatedPost.id ? updatedPost : p)));
+    setVehicles(prev => prev.map(v => {
+      if (v.id === updatedPost.vehicleId && v.buildUpdates) {
+        return {
+          ...v,
+          buildUpdates: v.buildUpdates.map(u => u.id === updatedPost.id ? {
+            ...u,
+            content: updatedPost.content,
+            images: updatedPost.images || (updatedPost.imageUrl ? [updatedPost.imageUrl] : [])
+          } : u)
+        };
+      }
+      return v;
+    }));
     showToast(`Post updated successfully! ✏️`);
   };
 
   // 6. Delete community post
   const handleDeletePost = (postId: string) => {
     setCommunityPosts(prev => prev.filter(p => p.id !== postId));
+    setVehicles(prev => prev.map(v => ({
+      ...v,
+      buildUpdates: v.buildUpdates?.filter(u => u.id !== postId)
+    })));
     showToast(`Post removed from live feed 🗑️`);
   };
 

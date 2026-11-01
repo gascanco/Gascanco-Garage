@@ -12,8 +12,8 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://gascanco.com/garage';
-  const shareTitle = 'Gascanco Garage — Enthusiast Builds & Rides';
-  const shareText = 'Check out Gascanco Garage: pure enthusiast vehicle builds, specs, and modifications feed!';
+  const shareTitle = 'GASCANCO Garage — Add your vehicles to the Garage!';
+  const shareText = 'Add your vehicles to the Garage! Check out my Garage on GASCANCO:';
 
   const handleCopy = async () => {
     try {
@@ -83,7 +83,7 @@ export const ShareAppModal: React.FC<ShareAppModalProps> = ({ isOpen, onClose })
           <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.093.303 2.246.464 3.443.464 6.627 0 12-4.975 12-11.111C24 4.974 18.627 0 12 0zm1.191 14.963l-3.056-3.26-5.963 3.26 6.559-6.963 3.13 3.26 5.889-3.26-6.559 6.963z" />
         </svg>
       ),
-      href: `https://www.facebook.com/dialog/send?link=${encodedUrl}&app_id=291494419107518&redirect_uri=${encodedUrl}`,
+      href: `https://m.me/?text=${encodeURIComponent('Add your vehicles to the Garage! ' + appUrl)}`,
     },
     {
       name: 'Messages / SMS',

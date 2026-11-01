@@ -104,6 +104,35 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     e.target.value = '';
   };
 
+  const galleryFileInputRef = useRef<HTMLInputElement | null>(null);
+  const updateFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleGalleryPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') {
+        setNewPhotoUrl(ev.target.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleUpdatePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (typeof ev.target?.result === 'string') {
+        setUpdatePhotoUrl(ev.target.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Add Pure Photo to Gallery state
   const [isAddPhotoOpen, setIsAddPhotoOpen] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
@@ -284,6 +313,12 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     e.preventDefault();
     if (!newModPartName.trim()) return;
 
+    const currentMods = vehicle.modifications || [];
+    if (currentMods.length >= 50) {
+      alert('Maximum limit of 50 modifications per vehicle reached.');
+      return;
+    }
+
     const newMod: Modification = {
       id: `mod-${Date.now()}`,
       category: newModCategory,
@@ -412,26 +447,32 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
     let installedPartLabel: string | undefined = undefined;
 
     if (installModWithUpdate && updateModPartName.trim()) {
-      const newMod: Modification = {
-        id: `mod-${Date.now()}`,
-        category: updateModCategory,
-        brand: updateModBrand.trim() || 'Custom',
-        partName: updateModPartName.trim(),
-        status: 'installed',
-        description: `Installed with update: ${updateTitle.trim() || 'Milestone update'}`,
-        photoUrl: updatePhotoUrl.trim() || undefined,
-        installedDate: formattedDate,
-      };
-      updatedMods = [...updatedMods, newMod];
       installedPartLabel = `${updateModBrand.trim() ? updateModBrand.trim() + ' ' : ''}${updateModPartName.trim()}`;
+      if (updatedMods.length < 50) {
+        const newMod: Modification = {
+          id: `mod-${Date.now()}`,
+          category: updateModCategory,
+          brand: updateModBrand.trim() || 'Custom',
+          partName: updateModPartName.trim(),
+          status: 'installed',
+          description: updateContent.trim() || `Installed on ${vehicle.year} ${vehicle.make} ${vehicle.model}.`,
+          photoUrl: updatePhotoUrl.trim() || undefined,
+          installedDate: formattedDate,
+        };
+        updatedMods = [...updatedMods, newMod];
+      }
     }
+
+    const defaultContent = installedPartLabel 
+      ? `Installed ${installedPartLabel}.` 
+      : (updateTitle.trim() || `Vehicle update on ${vehicle.year} ${vehicle.make} ${vehicle.model}.`);
 
     const newUpdate: BuildUpdate = {
       id: `upd-${Date.now()}`,
       vehicleId: vehicle.id,
-      title: updateTitle.trim() || 'Vehicle Update',
+      title: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
       date: formattedDate,
-      content: updateContent.trim() || 'Logged milestone update.',
+      content: updateContent.trim() || defaultContent,
       images: updatePhotoUrl.trim() ? [updatePhotoUrl.trim()] : [],
       modInstalled: installedPartLabel,
       likesCount: 0,
@@ -529,13 +570,13 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
         </span>
       </div>
 
-      {/* 3. Power */}
+      {/* 3. Modifications */}
       <div className="bg-[#1e1e20] border border-[#38383c] p-3 rounded-none">
         <span className="text-[10px] font-mono text-[#888888] uppercase tracking-wider block">
-          HORSEPOWER
+          MODIFICATIONS
         </span>
         <span className="font-['Oswald'] text-sm sm:text-base font-bold text-[#C8102E] uppercase break-words leading-snug block mt-0.5">
-          {vehicle.horsepower || 'Factory Spec'}
+          {modifications.length} Installed
         </span>
       </div>
 
@@ -717,24 +758,24 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => newModFileInputRef.current?.click()}
-                    className="sm:col-span-4 px-3 py-2 bg-[#202024] hover:bg-[#28282c] border border-dashed border-[#444448] hover:border-[#888888] text-white text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-[#C8102E]" />
-                    <span>Upload Photo</span>
-                  </button>
-                  <div className="sm:col-span-8">
-                    <input
-                      type="url"
-                      placeholder="Or paste photo URL (https://...)"
-                      value={newModPhoto}
-                      onChange={(e) => setNewModPhoto(e.target.value)}
-                      className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-                    />
-                  </div>
+                <div
+                  onClick={() => newModFileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && file.type.startsWith('image/')) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        if (typeof ev.target?.result === 'string') setNewModPhoto(ev.target.result);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-[#17171a] hover:bg-[#202024] border-2 border-dashed border-[#444448] hover:border-[#C8102E] text-white text-xs font-mono flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-[#C8102E]" />
+                  <span>Tap to upload or drag part photo here (PNG, JPG, WEBP)</span>
                 </div>
               )}
             </div>
@@ -889,24 +930,24 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => editModFileInputRef.current?.click()}
-                            className="sm:col-span-4 px-3 py-1.5 bg-[#202024] hover:bg-[#28282c] border border-dashed border-[#444448] hover:border-[#888888] text-white text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-3 h-3 text-[#C8102E]" />
-                            <span>Upload Photo</span>
-                          </button>
-                          <div className="sm:col-span-8">
-                            <input
-                              type="url"
-                              placeholder="Or paste photo URL (https://...)"
-                              value={editModPhoto}
-                              onChange={(e) => setEditModPhoto(e.target.value)}
-                              className="w-full bg-[#141416] border border-[#38383a] px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-                            />
-                          </div>
+                        <div
+                          onClick={() => editModFileInputRef.current?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0];
+                            if (file && file.type.startsWith('image/')) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                if (typeof ev.target?.result === 'string') setEditModPhoto(ev.target.result);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="w-full px-4 py-2.5 bg-[#17171a] hover:bg-[#202024] border-2 border-dashed border-[#444448] hover:border-[#C8102E] text-white text-xs font-mono flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-[#C8102E]" />
+                          <span>Tap to upload or drop replacement photo</span>
                         </div>
                       )}
                     </div>
@@ -1075,31 +1116,68 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
       {/* Inline Add Photo Form */}
       {isAddPhotoOpen && (
         <form onSubmit={handleAddPurePhoto} className="bg-[#1a1a1c] border border-[#444448] p-4 space-y-3">
+          <input
+            ref={galleryFileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleGalleryPhotoUpload}
+            className="hidden"
+          />
           <span className="font-['Oswald'] text-sm font-bold uppercase tracking-wider text-white block">
             Add Photo to Gallery
           </span>
-          <div>
-            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Image URL *</label>
-            <input
-              type="url"
-              required
-              placeholder="https://images.unsplash.com/..."
-              value={newPhotoUrl}
-              onChange={(e) => setNewPhotoUrl(e.target.value)}
-              className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
-            />
-          </div>
+          {newPhotoUrl ? (
+            <div className="relative w-full aspect-video bg-black overflow-hidden border border-[#38383a]">
+              <img src={newPhotoUrl} alt="Preview" className="w-full h-full object-contain" />
+              <button
+                type="button"
+                onClick={() => setNewPhotoUrl('')}
+                className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-[#C8102E] text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => galleryFileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file && file.type.startsWith('image/')) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    if (typeof ev.target?.result === 'string') setNewPhotoUrl(ev.target.result);
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="w-full p-6 border-2 border-dashed border-[#444448] hover:border-[#C8102E] bg-[#141416] hover:bg-[#1a1a1e] text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-2"
+            >
+              <Upload className="w-6 h-6 text-[#C8102E]" />
+              <span className="text-xs font-['Oswald'] font-bold uppercase tracking-wider text-white">
+                Drag and drop photo here or tap to upload
+              </span>
+              <span className="text-[11px] font-mono text-[#888888]">
+                Supports PNG, JPG, WEBP
+              </span>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
-              onClick={() => setIsAddPhotoOpen(false)}
+              onClick={() => {
+                setIsAddPhotoOpen(false);
+                setNewPhotoUrl('');
+              }}
               className="px-3 py-1.5 bg-[#252528] text-xs font-mono text-[#aaaaaa] hover:text-white cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider cursor-pointer"
+              disabled={!newPhotoUrl}
+              className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] disabled:opacity-50 text-white text-xs font-['Oswald'] font-bold uppercase tracking-wider cursor-pointer"
             >
               Upload to Gallery
             </button>
@@ -1162,10 +1240,9 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Title *</label>
+              <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Title (Optional)</label>
               <input
                 type="text"
-                required
                 placeholder="e.g. Coilover install & dyno calibration"
                 value={updateTitle}
                 onChange={(e) => setUpdateTitle(e.target.value)}
@@ -1186,10 +1263,9 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Notes / Work Performed *</label>
+            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Update Notes / Work Performed (Optional)</label>
             <textarea
               rows={3}
-              required
               placeholder="What did you do to the vehicle? Track day review, parts installation, corner balance details..."
               value={updateContent}
               onChange={(e) => setUpdateContent(e.target.value)}
@@ -1198,14 +1274,48 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1">Attached Photo URL (Optional)</label>
+            <label className="block text-[11px] font-mono uppercase text-[#aaaaaa] mb-1 font-bold">Attached Photo (Optional)</label>
             <input
-              type="url"
-              placeholder="https://..."
-              value={updatePhotoUrl}
-              onChange={(e) => setUpdatePhotoUrl(e.target.value)}
-              className="w-full bg-[#141416] border border-[#38383a] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#C8102E]"
+              ref={updateFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleUpdatePhotoUpload}
+              className="hidden"
             />
+            {updatePhotoUrl ? (
+              <div className="relative w-full aspect-video sm:aspect-[21/9] bg-black overflow-hidden border border-[#38383a]">
+                <img src={updatePhotoUrl} alt="Update attachment" className="w-full h-full object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setUpdatePhotoUrl('')}
+                  className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-[#C8102E] text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div
+                onClick={() => updateFileInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      if (typeof ev.target?.result === 'string') setUpdatePhotoUrl(ev.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="w-full p-4 border-2 border-dashed border-[#444448] hover:border-[#C8102E] bg-[#141416] hover:bg-[#1a1a1e] text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
+              >
+                <Upload className="w-4 h-4 text-[#C8102E]" />
+                <span className="text-xs font-mono text-white">
+                  Drop photo or click to upload
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Optional Mod Toggle that automatically adds to Modifications & Parts */}
@@ -1629,7 +1739,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
           >
             <Gauge className="w-3.5 h-3.5 mb-0.5 shrink-0" />
             <span className="text-[9px] font-['Oswald'] uppercase tracking-wider leading-tight truncate w-full">
-              Specs
+              Details
             </span>
           </button>
 
@@ -1707,7 +1817,7 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
               }`}
             >
               <Gauge className="w-4 h-4" />
-              <span>Build Sheet ({modifications.length} Mods)</span>
+              <span>Details ({modifications.length} Mods)</span>
             </button>
 
             <button

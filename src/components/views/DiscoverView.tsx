@@ -29,8 +29,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   spotlightConfig,
   onOpenSpotlightModal,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
-  const [selectedLocation, setSelectedLocation] = useState<string>('All Locations');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Categories');
+  const [selectedLocation, setSelectedLocation] = useState<string>('Locations');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
@@ -62,7 +62,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       'Commercial & Heavy Duty',
     ];
     defaults.forEach(d => set.add(d));
-    return ['All Categories', ...Array.from(set)];
+    return ['Categories', ...Array.from(set)];
   }, [vehicles]);
 
   // Dynamic Locations list - Merged into States only
@@ -73,7 +73,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         set.add(extractStateName(v.owner.location));
       }
     });
-    return ['All Locations', ...Array.from(set).sort()];
+    return ['Locations', ...Array.from(set).sort()];
   }, [vehicles]);
 
   // Community Builders list for bottom section: limited to 10 builders
@@ -111,10 +111,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   // Filtered vehicle list: Category, Location & Search based
   const filteredVehicles = useMemo(() => {
     return vehicles.filter(v => {
-      if (selectedCategory !== 'All Categories' && v.category !== selectedCategory) {
+      if (selectedCategory !== 'Categories' && v.category !== selectedCategory) {
         return false;
       }
-      if (selectedLocation !== 'All Locations') {
+      if (selectedLocation !== 'Locations') {
         const stateName = extractStateName(v.owner.location);
         if (stateName.toLowerCase() !== selectedLocation.toLowerCase()) {
           return false;
@@ -140,13 +140,13 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   }, [vehicles, selectedCategory, selectedLocation, searchQuery]);
 
   const clearFilters = () => {
-    setSelectedCategory('All Categories');
-    setSelectedLocation('All Locations');
+    setSelectedCategory('Categories');
+    setSelectedLocation('Locations');
     setSearchQuery('');
     setIsSearchOpen(false);
   };
 
-  const hasActiveFilters = selectedCategory !== 'All Categories' || selectedLocation !== 'All Locations' || searchQuery !== '';
+  const hasActiveFilters = selectedCategory !== 'Categories' || selectedLocation !== 'Locations' || searchQuery !== '';
 
   // Strict single Spotlight rule: When hero banner is visible, exclude it from grid to prevent duplicate
   const gridVehicles = useMemo(() => {
@@ -176,13 +176,12 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         )}
 
         {/* Categories & Location Filter Toolbar (Mirrored 2-col dropdown menu layout on mobile, clean flex on desktop) */}
-        <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-3 sm:p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:items-center sm:gap-3">
-            {/* Category Dropdown - Featuring categories instead of a search bar */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1">
-              <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="mb-3 sm:mb-5 bg-[#242426] border border-[#38383a] p-2.5 sm:p-4 shadow-sm">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-3">
+            {/* Category Dropdown */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:flex-1 min-w-0">
+              <div className="flex items-center gap-2 w-full bg-[#171719] border border-[#38383a] px-2.5 py-2 sm:px-4 sm:py-3 min-w-0">
                 <Layers className="w-4 h-4 text-[#C8102E] shrink-0" />
-                <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Category:</span>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
@@ -195,10 +194,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     </option>
                   ))}
                 </select>
-                {selectedCategory !== 'All Categories' && (
+                {selectedCategory !== 'Categories' && (
                   <button
-                    onClick={() => setSelectedCategory('All Categories')}
-                    className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
+                    onClick={() => setSelectedCategory('Categories')}
+                    className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer"
                     title="Clear category filter"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -207,11 +206,10 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               </div>
             </div>
 
-            {/* Location Selector - Standard Card Width on Mobile */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto">
-              <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-3 py-2.5 sm:px-4 sm:py-3">
+            {/* Location Selector */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto min-w-0">
+              <div className="flex items-center gap-2 w-full sm:w-auto bg-[#171719] border border-[#38383a] px-2.5 py-2 sm:px-4 sm:py-3 min-w-0 flex-1">
                 <MapPin className="w-4 h-4 text-[#C8102E] shrink-0" />
-                <span className="text-xs sm:text-sm font-mono text-[#aaaaaa] uppercase shrink-0 hidden xs:inline sm:inline">Location:</span>
                 <select
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
@@ -224,11 +222,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     </option>
                   ))}
                 </select>
-                {hasActiveFilters && (
+                {selectedLocation !== 'Locations' && (
                   <button
-                    onClick={clearFilters}
-                    className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer sm:hidden"
-                    title="Reset filter"
+                    onClick={() => setSelectedLocation('Locations')}
+                    className="text-xs text-[#C8102E] hover:underline font-mono shrink-0 ml-1 cursor-pointer"
+                    title="Reset location filter"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
