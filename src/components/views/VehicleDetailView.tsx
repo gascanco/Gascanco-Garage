@@ -168,6 +168,20 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
   const [shoutoutUrl, setShoutoutUrl] = useState('');
   const [shoutoutVerified, setShoutoutVerified] = useState(true);
 
+  // Edit Vehicle Update modal state
+  const [editingUpdate, setEditingUpdate] = useState<BuildUpdate | null>(null);
+  const [editUpdateDate, setEditUpdateDate] = useState('');
+  const [editUpdateContent, setEditUpdateContent] = useState('');
+  const [editUpdatePhotoUrl, setEditUpdatePhotoUrl] = useState('');
+  const editUpdateFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Edit Crew & Sponsor modal state
+  const [editingCrewItem, setEditingCrewItem] = useState<BuildCrewOrSponsor | null>(null);
+  const [editCrewName, setEditCrewName] = useState('');
+  const [editCrewRole, setEditCrewRole] = useState('');
+  const [editCrewType, setEditCrewType] = useState<'crew' | 'sponsor' | 'shop'>('shop');
+  const [editCrewUrl, setEditCrewUrl] = useState('');
+
   const canManageVehicle = isHardAdmin(currentUser) || currentUser.id === vehicle.owner.id;
   const isOwner = currentUser.id === vehicle.owner.id;
 
@@ -539,8 +553,83 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
   const handleDeleteShoutout = (id: string) => {
     if (!canManageVehicle || !onUpdateVehicle) return;
+    if (!window.confirm('Remove this crew member or sponsor?')) return;
     const updatedCrew = currentCrewAndSponsors.filter(c => c.id !== id);
     onUpdateVehicle({ ...vehicle, crewAndSponsors: updatedCrew });
+  };
+
+  const handleOpenEditUpdateModal = (upd: BuildUpdate) => {
+    setEditingUpdate(upd);
+    setEditUpdateDate(upd.date || '');
+    setEditUpdateContent(upd.content || '');
+    setEditUpdatePhotoUrl(upd.images && upd.images.length > 0 ? upd.images[0] : '');
+  };
+
+  const handleSaveEditedUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUpdate || !canManageVehicle || !onUpdateVehicle) return;
+
+    const currentUpdates = vehicle.buildUpdates || [];
+    const updatedUpdates = currentUpdates.map(u => {
+      if (u.id === editingUpdate.id) {
+        return {
+          ...u,
+          date: editUpdateDate.trim() || u.date,
+          content: editUpdateContent.trim() || u.content,
+          images: editUpdatePhotoUrl.trim() ? [editUpdatePhotoUrl.trim()] : [],
+        };
+      }
+      return u;
+    });
+
+    onUpdateVehicle({
+      ...vehicle,
+      buildUpdates: updatedUpdates,
+    });
+    setEditingUpdate(null);
+  };
+
+  const handleDeleteUpdate = (updateId: string) => {
+    if (!canManageVehicle || !onUpdateVehicle) return;
+    if (!window.confirm('Delete this vehicle update?')) return;
+
+    const updatedUpdates = (vehicle.buildUpdates || []).filter(u => u.id !== updateId);
+    onUpdateVehicle({
+      ...vehicle,
+      buildUpdates: updatedUpdates,
+    });
+  };
+
+  const handleOpenEditCrewModal = (item: BuildCrewOrSponsor) => {
+    setEditingCrewItem(item);
+    setEditCrewName(item.name || '');
+    setEditCrewRole(item.role || '');
+    setEditCrewType(item.type || 'shop');
+    setEditCrewUrl(item.url || '');
+  };
+
+  const handleSaveEditedCrew = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCrewItem || !canManageVehicle || !onUpdateVehicle) return;
+
+    const updatedCrew = currentCrewAndSponsors.map(item => {
+      if (item.id === editingCrewItem.id) {
+        return {
+          ...item,
+          name: editCrewName.trim() || item.name,
+          role: editCrewRole.trim() || item.role,
+          type: editCrewType,
+          url: editCrewUrl.trim() || undefined,
+        };
+      }
+      return item;
+    });
+
+    onUpdateVehicle({
+      ...vehicle,
+      crewAndSponsors: updatedCrew,
+    });
+    setEditingCrewItem(null);
   };
 
   // ----------------------------------------------------
@@ -1413,6 +1502,27 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                     {upd.title}
                   </h4>
                 </div>
+
+                {canManageVehicle && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditUpdateModal(upd)}
+                      className="p-1.5 bg-[#242428] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white border border-[#3d3d40] hover:border-[#C8102E] transition-colors cursor-pointer"
+                      title="Edit update"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteUpdate(upd.id)}
+                      className="p-1.5 bg-[#242428] hover:bg-[#ff4d4d] text-[#aaaaaa] hover:text-white border border-[#3d3d40] hover:border-[#ff4d4d] transition-colors cursor-pointer"
+                      title="Delete update"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <p className="text-xs sm:text-sm text-[#cccccc] font-['Inter'] leading-relaxed whitespace-pre-line">
@@ -1604,14 +1714,24 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
             </div>
 
             {canManageVehicle && (
-              <button
-                type="button"
-                onClick={() => handleDeleteShoutout(item.id)}
-                className="text-[#666666] hover:text-[#ff4d4d] p-1 cursor-pointer transition-colors"
-                title="Remove shoutout"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditCrewModal(item)}
+                  className="text-[#888888] hover:text-[#C8102E] p-1 cursor-pointer transition-colors"
+                  title="Edit shoutout"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteShoutout(item.id)}
+                  className="text-[#666666] hover:text-[#ff4d4d] p-1 cursor-pointer transition-colors"
+                  title="Remove shoutout"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
         ))}
@@ -1877,10 +1997,20 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Column */}
-          <div className="lg:col-span-8 space-y-6 min-w-0">
-            
+        {activeTab === 'about' ? (
+          /* TAB: ABOUT (Single authoritative layout: Story & Crew on left, Owner card on right) */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-7 space-y-6 min-w-0">
+              {renderStorySection()}
+              {renderCrewSection()}
+            </div>
+            <div className="lg:col-span-5 space-y-6 min-w-0">
+              {renderOwnerSection()}
+            </div>
+          </div>
+        ) : (
+          /* ALL OTHER TABS: Full-width layout without redundant duplicate sidebar */
+          <div className="space-y-6 min-w-0">
             {/* TAB: BUILD SHEET (Hero Spec Badges + Categorized Mod Checklist + Factory Specs) */}
             {activeTab === 'sheet' && (
               <div className="flex flex-col space-y-6">
@@ -1899,67 +2029,49 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
 
             {/* TAB: PHOTOS (Pure 2-Column Photo Gallery, Zero Text Overlays) */}
             {activeTab === 'photos' && (
-              <div className="space-y-6">
+              <div>
                 {renderPurePhotoGallery()}
               </div>
             )}
 
             {/* TAB: UPDATES (Dedicated Updates Feed with Optional Mod Auto-Add) */}
             {activeTab === 'updates' && (
-              <div className="space-y-6">
+              <div>
                 {renderVehicleUpdates()}
-              </div>
-            )}
-
-            {/* TAB: ABOUT (Reordered: User, Build Crew & Sponsors, About this Model) */}
-            {activeTab === 'about' && (
-              <div className="space-y-6">
-                {renderOwnerSection()}
-                {renderCrewSection()}
-                {renderStorySection()}
               </div>
             )}
 
             {/* TAB: DISCUSSIONS */}
             {activeTab === 'discussion' && (
-              <div className="space-y-6">
-                <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
-                  <div>
-                    <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
-                      Community Discussions & Builder Q&A
-                    </h3>
-                    <p className="text-xs text-[#888888] font-mono mt-0.5">
-                      Ask questions about parts, recommend setup tweaks, or connect with the builder.
-                    </p>
-                  </div>
-
-                  <ThreadedComments
-                    postId={vehicle.id}
-                    postTitle={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                    postType="vehicle"
-                    comments={vehicleComments}
-                    currentUser={currentUser}
-                    onAddComment={onAddComment || (() => {})}
-                    onUpdateComment={onUpdateComment || (() => {})}
-                    onDeleteComment={onDeleteComment || (() => {})}
-                    onOpenLightbox={(img) => {
-                      const idx = allGalleryPhotos.indexOf(img);
-                      setLightboxIndex(idx >= 0 ? idx : 0);
-                      setLightboxOpen(true);
-                    }}
-                  />
+              <div className="bg-[#242426] border border-[#38383a] p-4 sm:p-6 space-y-4 shadow-sm">
+                <div>
+                  <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+                    Community Discussions & Builder Q&A
+                  </h3>
+                  <p className="text-xs text-[#888888] font-mono mt-0.5">
+                    Ask questions about parts, recommend setup tweaks, or connect with the builder.
+                  </p>
                 </div>
+
+                <ThreadedComments
+                  postId={vehicle.id}
+                  postTitle={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                  postType="vehicle"
+                  comments={vehicleComments}
+                  currentUser={currentUser}
+                  onAddComment={onAddComment || (() => {})}
+                  onUpdateComment={onUpdateComment || (() => {})}
+                  onDeleteComment={onDeleteComment || (() => {})}
+                  onOpenLightbox={(img) => {
+                    const idx = allGalleryPhotos.indexOf(img);
+                    setLightboxIndex(idx >= 0 ? idx : 0);
+                    setLightboxOpen(true);
+                  }}
+                />
               </div>
             )}
           </div>
-
-          {/* Desktop Sidebar Column */}
-          <div className="hidden lg:block lg:col-span-4 space-y-6">
-            {renderOwnerSection()}
-            {renderCrewSection()}
-            {renderStorySection()}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Lightbox Modal with Full Touch Swiping and Next/Prev Controls */}
@@ -2101,6 +2213,210 @@ export const VehicleDetailView: React.FC<VehicleDetailViewProps> = ({
                   className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white uppercase font-bold text-xs cursor-pointer"
                 >
                   Add Partner
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Vehicle Update Modal */}
+      {editingUpdate && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-[#1f1f22] border border-[#444448] max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#38383a]">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-[#C8102E]" />
+                <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+                  Edit Vehicle Update
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUpdate(null)}
+                className="text-[#888888] hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedUpdate} className="space-y-4 text-xs font-mono">
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Date Logged</label>
+                <input
+                  type="text"
+                  value={editUpdateDate}
+                  onChange={(e) => setEditUpdateDate(e.target.value)}
+                  placeholder="e.g. Oct 2024"
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Update Notes / Work Performed</label>
+                <textarea
+                  rows={4}
+                  value={editUpdateContent}
+                  onChange={(e) => setEditUpdateContent(e.target.value)}
+                  placeholder="What was done to the vehicle..."
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E] leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Attached Photo</label>
+                <input
+                  ref={editUpdateFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !file.type.startsWith('image/')) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      if (typeof ev.target?.result === 'string') {
+                        setEditUpdatePhotoUrl(ev.target.result);
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+                {editUpdatePhotoUrl ? (
+                  <div className="relative w-full aspect-video bg-black overflow-hidden border border-[#38383a]">
+                    <img src={editUpdatePhotoUrl} alt="Update attachment" className="w-full h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setEditUpdatePhotoUrl('')}
+                      className="absolute top-2 right-2 p-1.5 bg-black/80 hover:bg-[#C8102E] text-white cursor-pointer"
+                      title="Remove photo"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => editUpdateFileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          if (typeof ev.target?.result === 'string') setEditUpdatePhotoUrl(ev.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full p-4 border-2 border-dashed border-[#444448] hover:border-[#C8102E] bg-[#141416] hover:bg-[#1a1a1e] text-center cursor-pointer transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-4 h-4 text-[#C8102E]" />
+                    <span className="text-xs font-mono text-white">
+                      Drop photo or click to upload
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#333336]">
+                <button
+                  type="button"
+                  onClick={() => setEditingUpdate(null)}
+                  className="px-3.5 py-2 bg-[#262628] text-[#aaaaaa] hover:text-white uppercase font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#C8102E] hover:bg-[#e01334] text-white uppercase font-bold text-xs cursor-pointer font-['Oswald']"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Build Crew & Sponsor Modal */}
+      {editingCrewItem && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-[#1f1f22] border border-[#444448] max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[#38383a]">
+              <h3 className="font-['Oswald'] text-xl font-bold uppercase tracking-wide text-white">
+                Edit Crew Member / Sponsor
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingCrewItem(null)}
+                className="text-[#888888] hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedCrew} className="space-y-4 text-xs font-mono">
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Name / Company *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCrewName}
+                  onChange={(e) => setEditCrewName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Role / Contribution *</label>
+                <input
+                  type="text"
+                  required
+                  value={editCrewRole}
+                  onChange={(e) => setEditCrewRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Partner Type</label>
+                <select
+                  value={editCrewType}
+                  onChange={(e) => setEditCrewType(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none"
+                >
+                  <option value="shop">Performance Shop / Tuner</option>
+                  <option value="crew">Fabricator / Crew Member</option>
+                  <option value="sponsor">Brand Sponsor</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#aaaaaa] uppercase mb-1">Partner Website URL (Optional)</label>
+                <input
+                  type="url"
+                  value={editCrewUrl}
+                  onChange={(e) => setEditCrewUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 bg-[#141416] border border-[#38383a] text-white focus:outline-none focus:border-[#C8102E]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#333336]">
+                <button
+                  type="button"
+                  onClick={() => setEditingCrewItem(null)}
+                  className="px-3 py-1.5 bg-[#262628] text-[#aaaaaa] hover:text-white uppercase font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#C8102E] hover:bg-[#e01334] text-white uppercase font-bold text-xs cursor-pointer font-['Oswald']"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

@@ -1,68 +1,111 @@
-# Implementation Plan: Feed Streamlining, Pure Drag & Drop, and Garage Upgrades
+# Feed Card Standardization, Vehicle Updates & Crew Management, and Layout Polish
 
-This plan details the changes required to refine the Live Feed, Builds & Rides filters, ADD Modal update flow, My Garage specs, and social sharing links.
+A targeted polish and refinement plan to standardize Live Feed update cards to match post cards (text top, full-width photo below), eliminate duplicate vehicle titles, enable complete edit and delete workflows for Vehicle Updates and Build Crew via modal dialogs, remove redundant filter text on Builds & Rides, and eradicate duplicate sidebar sections in Vehicle Details.
 
----
+## User Review & Critical Decisions
 
-## 1. Live Feed & Card Layout Upgrades
-- **Body Text as Primary Lead**: In `ActivityFeed.tsx`, replace the generic "Logged a Milestone" banner with the actual post body/content text. For lengthy notes, add a clean, mobile-friendly "Show more / Show less" toggle.
-- **Vehicle Info & Matching Icon**: Replace "Build Update" badge text with the vehicle's `[Year] [Make] [Model]` along with its category-matched icon (Car, Truck, Motorcycle, etc.).
-- **Remove "All" from Filter Dropdowns**:
-  - In `ActivityFeed.tsx` and `DiscoverView.tsx`, update category and location dropdown labels: replace "All Categories" with "Categories", and "All Locations" with "Locations".
-  - Display clean, unclipped state names directly to prevent mobile text cutoff.
+> [!IMPORTANT]
+> The following architectural and user experience decisions have been aligned and confirmed:
 
----
-
-## 2. Builds & Rides Filter Polish
-- **Filter Labels**: Remove "All" from category, type, and location filters in `DiscoverView.tsx`.
-- **Text Wrapping & Overflow**: Ensure filter pills and selects have flex-wrap or overflow containment so text is never truncated on small phone viewports.
+- **Confirmed Decision 1 (Edit Experience)**: Vehicle Updates and Build Crew members will feature intuitive modal popups for editing text, roles, links, and photos, matching the desktop and mobile modals used across Gascanco.
+- **Confirmed Decision 2 (Sidebar Redundancy Removal)**: Redundant duplicate right-hand sidebar sections ("About this [Model]" and "Build Crew & Sponsors") on the Updates tab and other secondary tabs will be removed. Full-width focus is given to updates, specs, and gallery, while the "About & Crew" tab serves as the single authoritative home for owner bio, crew/sponsors, and the vehicle story.
+- **Confirmed Decision 3 (Feed Card Hierarchy)**: Feed update cards will be standardized so they no longer split side-by-side on desktop. All feed cards will lead with author header, clean text context on top, full-width photo container below, and a single bottom vehicle tag with Car icon, removing the redundant top-right title.
 
 ---
 
-## 3. ADD Modal & Vehicle Update Streamlining
-- **Remove "Headlines"**:
-  - Eliminate headline/title inputs from community post and vehicle update forms. All posts now lead directly with the update narrative/content.
-- **Eliminate Duplicate Activity Posts**:
-  - In `App.tsx` and `VehicleDetailView.tsx`, fix the build update flow so that posting a vehicle update generates exactly **one** syndicated Live Feed post with only the uploaded photos.
-  - Verify that the post has full Edit and Delete functionality in the feed.
-- **Compact Mod Auto-Add in Vehicle Update**:
-  - Add a compact modification input (Part Name and Category dropdown) with an "Add to Vehicle Mods" checkbox.
-  - When checked, submitting the update automatically registers the part into the vehicle's `modifications` list (up to 50 mods) and logs the update to the vehicle's build log and Live Feed simultaneously.
-- **Pure Drag & Drop / File Upload (No URL Boxes)**:
-  - Remove all URL input fields across photo uploaders in the app (Vehicle photos, Update photos, Modification photos, Milestone photos, Event photos).
-  - Standardize photo selection strictly to native Drag & Drop and tap-to-upload file picker (PNG, JPG, WEBP, HEIC).
-- **20 Vehicle Photos**:
-  - Increase the vehicle photo upload capacity from 5 to 20 photos with primary photo selection.
+### 1. Overview & Core Concept
+
+- **What It Does**:
+  1. **Standardized Live Feed Cards**: Replaces the awkward 2-column side-by-side layout on build updates with a unified vertical layout: author header $\to$ text notes (with expandable "Click to expand" for long updates) $\to$ full-width uncropped media container $\to$ bottom footer with vehicle tag and interaction counters.
+  2. **Zero Duplicate Vehicle Titles**: Strips the duplicate vehicle name from the top-right header of feed cards, keeping only the prominent bottom vehicle button.
+  3. **Edit & Delete for Vehicle Updates**: Adds edit (pencil) and delete (trash) buttons to all vehicle update entries. Clicking edit opens a modal to adjust the date, title, work notes, and attached photo.
+  4. **Edit & Delete for Build Crew & Sponsors**: Adds an edit button alongside the existing delete button on crew/sponsor cards, opening a modal to edit name, role, partner URL, and classification.
+  5. **Clean Filter UI on Builds & Rides**: Removes the `SHOWING [X] BUILDS · ...` indicator line beneath the category and location dropdowns.
+  6. **Eradication of Duplicate Sections in Vehicle Details**: Eliminates the secondary sidebar duplicate blocks that caused "About this [Model]" and "Build Crew & Sponsors" to render repeatedly.
+- **Target Audience / Persona**: Automotive builders, shop owners, and community members logging parts, showing off stances, and inspecting build logs without visual clutter.
+- **Key Value**: Cohesive feed browsing, streamlined mobile/desktop responsiveness, and effortless editing of build history and crew credits.
 
 ---
 
-## 4. My Garage & Vehicle Detail Refinements
-- **Remove "Public" / "Private" Everywhere**:
-  - Remove visibility badges ("PUBLIC", "PRIVATE"), visibility filters, and visibility toggles across the entire application. All registered vehicles are public.
-- **Rename "Build Sheet"**:
-  - Change "Build Sheet" tab label to "Details" in `VehicleDetailView.tsx` and throughout the app.
-- **Mod Count in Place of Horsepower**:
-  - Replace the floating Horsepower stat on the vehicle cover with the number of logged modifications (e.g. `12 Mods Logged`), cleanly positioned in the vehicle details header rather than floating over the photo.
-- **50 Modifications Cap**:
-  - Support up to 50 modifications per vehicle, displaying category counts and status pills cleanly.
+### 2. User Experience & Visual Design
+
+#### Key User Flows
+1. **Live Feed Browsing**:
+   - Every card follows an identical vertical rhythm: Author avatar & name on top left $\to$ text body $\to$ full-width uncropped photo display $\to$ footer bar with tagged vehicle on the left and reaction buttons on the right.
+   - Long update notes gracefully truncate at 3 lines with a clean `Click to expand` text button.
+2. **Editing a Vehicle Update**:
+   - In Vehicle Details $\to$ Updates tab, each update card displays `Edit` and `Delete` action buttons for the vehicle owner and admins.
+   - Clicking `Edit` opens a dark-themed modal (`#171719` container, `#C8102E` accent) pre-filled with the update title, date, notes, and current photo preview.
+   - User can modify notes, replace the photo via drag-and-drop or file upload, and save. The changes immediately update in state.
+3. **Editing a Build Crew Member / Sponsor**:
+   - In Vehicle Details $\to$ About & Crew tab, each crew card displays `Edit` and `Delete` buttons.
+   - Clicking `Edit` opens a modal pre-populated with Name, Role, Type (Shop, Crew, Sponsor, Parts Manufacturer), and Website URL.
+4. **Discover View (Builds & Rides)**:
+   - Filter bar with Category, Location, and Search sits directly above the responsive vehicle grid without the redundant `SHOWING [X] BUILDS` text bar.
+
+#### Visual Identity & Theme
+- **Theme**: Dark industrial garage aesthetic (`#171719` dominant canvas, `#242426` elevated cards, `#C8102E` Gascanco crimson accent).
+- **Typography**:
+  - `Oswald`: Vehicle titles, section headings, and action buttons.
+  - `Inter`: Body prose, build notes, and tabular metadata.
+  - `La Raptida`: Exclusive Gascanco wordmark branding.
+- **Anti-Slop Compliance**:
+  - Unboxed metadata with typographic dots (`·`).
+  - No pill badge sandwiches or decorative pulsing dots.
+  - Clean hairline borders (`border-[#38383a]`) with no thick left colored accent bars.
 
 ---
 
-## 5. Share Modal & Messenger Link Fix
-- **Facebook Messenger Fix**:
-  - Update the Facebook Messenger share action in `ShareAppModal.tsx` to use direct mobile and desktop Messenger endpoints (`https://m.me/` / `fb-messenger://share`) with prefilled text: `"Check out my Garage on GASCANCO: Add your vehicles to the Garage!"`.
-- **Share Copy & Previews**:
-  - Ensure all share buttons (Copy Link, X/Twitter, Messenger, SMS) use concise inviting copy: `"Add your vehicles to the Garage!"` and `"Check out my Garage"`.
+### 3. Key Product Decisions & Trade-Offs
+
+- **Standardized Feed Layout**:
+  - *Chosen Approach*: Unify all feed cards to vertical text-over-photo structure.
+  - *Why*: The split 7/5 column layout caused photos to look tiny and cropped on tablets and desktops, breaking visual rhythm across the feed.
+  - *Alternatives Considered*: Keeping side-by-side for milestone updates—rejected as it broke visual consistency and caused text squishing.
+- **Dedicated Edit Modals**:
+  - *Chosen Approach*: Modal popups for updating vehicle updates and crew members.
+  - *Why*: Keeps cards clean and uncluttered; prevents layout shifts and gives ample space for photo drag-and-drop replacement.
+- **Sidebar Elimination on Non-About Tabs**:
+  - *Chosen Approach*: On the Updates tab, render a clean, focused layout without the redundant sidebar; keep owner, crew, and vehicle story exclusively inside the "About & Crew" tab.
+  - *Why*: Resolves the exact issue highlighted in Screenshot 2 where the user saw multiple identical "About this Integra" and "Build Crew" cards on the same screen.
 
 ---
 
-## 6. Verification Plan
-- **Lint Check**: Run `lint_applet` (`tsc --noEmit`) to verify zero syntax and type issues.
-- **Compile Check**: Run `compile_applet` (`npm run build`) to ensure clean compilation.
-- **Manual Verification**:
-  - Post a vehicle update and verify only 1 post appears on the Live Feed without headline, showing only uploaded photos.
-  - Verify compact mod input automatically appends to the vehicle's mods.
-  - Verify all URL input boxes are gone and replaced with drag & drop / file upload.
-  - Verify 20 photos can be uploaded for a vehicle.
-  - Verify horsepower on top of photo is replaced with mod count.
-  - Test Facebook Messenger link.
+### 4. Technical Architecture & Data Strategy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                          App.tsx                            │
+│  - vehicles: Vehicle[]                                      │
+│  - communityPosts: Post[]                                   │
+│  - onUpdateVehicle (persists updates, mods, crew changes)   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+            ┌──────────────────┴──────────────────┐
+            ▼                                     ▼
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│       ActivityFeed.tsx       │    │    VehicleDetailView.tsx     │
+│  - Full-width media layout   │    │  - Full-width Updates tab    │
+│  - Single bottom vehicle tag │    │  - Edit & Delete Update Modal│
+│  - Edit & Delete feed actions│    │  - Edit & Delete Crew Modal  │
+└──────────────────────────────┘    └──────────────────────────────┘
+            │                                     │
+            ▼                                     ▼
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│       DiscoverView.tsx       │    │     Single Authoritative     │
+│  - Remove count bar below    │    │      About & Crew Tab        │
+│    category & location filter│    │  - No redundant right column │
+└──────────────────────────────┘    └──────────────────────────────┘
+```
+
+#### State & Handler Mappings
+1. **`VehicleDetailView.tsx`**:
+   - `handleEditVehicleUpdate(updateId, updatedData)`: Updates `vehicle.buildUpdates` array, closes modal, and invokes `onUpdateVehicle`.
+   - `handleDeleteVehicleUpdate(updateId)`: Prompts confirmation, filters out the update from `vehicle.buildUpdates`, and invokes `onUpdateVehicle`.
+   - `handleEditShoutout(crewId, updatedData)`: Updates `vehicle.crewAndSponsors` array and calls `onUpdateVehicle`.
+   - `activeTab` rendering logic: On `activeTab === 'updates'` and `activeTab === 'photos'`, use full-width grid layout without rendering the redundant right sidebar column.
+2. **`ActivityFeed.tsx`**:
+   - Adjust lines 965-980: Remove top-right duplicate vehicle button for `act.type !== 'post'`.
+   - Adjust lines 1273-1320: Replace 12-column split with stacked text $\to$ full-width photo.
+3. **`DiscoverView.tsx`**:
+   - Remove lines 283-291 (`Count Bar`).

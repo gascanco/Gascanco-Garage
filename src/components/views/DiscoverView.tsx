@@ -280,15 +280,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           )}
         </div>
 
-        {/* Count Bar */}
-        <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#3d3d3d] text-xs sm:text-sm font-mono text-[#bbbbbb]">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span>SHOWING <strong className="text-white">{filteredVehicles.length}</strong> BUILDS</span>
-            {selectedCategory !== 'All Categories' && <span>· <span className="text-[#C8102E]">{selectedCategory}</span></span>}
-            {selectedLocation !== 'All Locations' && <span>· <span className="text-[#C8102E]">{selectedLocation}</span></span>}
-            {searchQuery && <span>· <span className="text-[#888888]">"{searchQuery}"</span></span>}
-          </div>
-        </div>
 
         {/* Vehicle Cards Grid: Dynamically responsive */}
         {gridVehicles.length > 0 ? (

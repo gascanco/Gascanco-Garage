@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for Live Feed post cards upgrade, Builds & Rides filter truncation fixes, ADD Modal post streamlining, single-post build update syndication with compact mod auto-add, URL input removal in favor of drag-and-drop/file upload, 20-photo vehicle limit, 50-mod limit, removal of public/private toggles across the app, and Facebook Messenger link fix.",
-  "updatedAt":  "2026-11-01T11:20:40.181936804Z",
+  "summary":  "Implementation plan for standardizing Live Feed card layout to text-over-photo, removing duplicate vehicle titles, making vehicle updates and build crew editable and deletable via modal popups, removing filter count text from Builds & Rides, and eliminating redundant duplicate sidebar sections in Vehicle Details.",
+  "updatedAt":  "2026-11-02T11:06:25.956358626Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

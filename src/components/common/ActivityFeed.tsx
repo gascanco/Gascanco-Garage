@@ -928,9 +928,9 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                   </div>
 
                   {/* Right: Edit / Delete button for author or Super Admin (Gascanco@gmail.com) */}
-                  {isRegistration ? null : isPost ? (
-                    (act.owner.id === currentUserId || isHardAdmin(currentUser)) ? (
-                      <div className="flex items-center gap-1 shrink-0">
+                  {isRegistration ? null : (act.owner.id === currentUserId || isHardAdmin(currentUser)) ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isPost && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -943,42 +943,30 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                           <Pencil className="w-3 h-3 text-[#C8102E] group-hover/edit:text-white transition-colors" />
                           <span className="hidden sm:inline">Edit</span>
                         </button>
-                        {isHardAdmin(currentUser) && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const targetPostId = act.postId || act.id.replace('act-post-', '');
-                              if (window.confirm('Super Admin: Delete this post from the feed?')) {
-                                onDeletePost?.(targetPostId);
-                              }
-                            }}
-                            className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 bg-[#282828] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase transition-all duration-150 active:scale-[0.98] cursor-pointer"
-                            title="Super Admin: Delete post"
-                          >
-                            <Trash2 className="w-3 h-3 text-[#ff4d4d] hover:text-white" />
-                            <span className="hidden sm:inline text-[10px]">Delete</span>
-                          </button>
-                        )}
-                      </div>
-                    ) : null
-                  ) : act.vehicleId && act.vehicleName ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectVehicle(act.vehicleId!);
-                      }}
-                      className="flex items-center gap-1.5 text-xs font-['Oswald'] font-bold uppercase text-[#cccccc] hover:text-[#C8102E] transition-colors truncate max-w-[220px] cursor-pointer"
-                    >
-                      <Car className="w-3.5 h-3.5 text-[#C8102E] shrink-0" />
-                      <span className="truncate">{act.vehicleName}</span>
-                    </button>
-                  ) : (
+                      )}
+                      {(isHardAdmin(currentUser) || act.owner.id === currentUserId) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetPostId = act.postId || act.id.replace('act-post-', '').replace('act-upd-', '');
+                            if (window.confirm('Delete this from the feed?')) {
+                              onDeletePost?.(targetPostId);
+                            }
+                          }}
+                          className="flex items-center gap-1 p-1.5 sm:px-2 sm:py-1 bg-[#282828] hover:bg-[#C8102E] text-[#aaaaaa] hover:text-white border border-[#444444] hover:border-[#C8102E] text-xs font-mono uppercase transition-all duration-150 active:scale-[0.98] cursor-pointer"
+                          title="Delete post"
+                        >
+                          <Trash2 className="w-3 h-3 text-[#ff4d4d] hover:text-white" />
+                          <span className="hidden sm:inline text-[10px]">Delete</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : isEvent ? (
                     <span className="text-[10px] font-mono uppercase text-[#777777] tracking-wider">
-                      {isEvent ? 'Event' : (act.badge === 'Build Update' ? 'Update' : act.badge)}
+                      Event
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* 2. Main Content Body */}
@@ -1270,53 +1258,51 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({
                     )}
                   </div>
                 ) : (
-                  /* Standard Build Log / Mod Layout */
-                  <div className="p-4 sm:p-5">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                      {/* Text Details */}
-                      <div className={`${act.photoUrl ? 'md:col-span-7' : 'md:col-span-12'} space-y-2`}>
-                        {act.description && (
-                          <div>
-                            <p className={`text-sm sm:text-base text-[#e0e0e0] leading-relaxed whitespace-pre-line ${
-                              expandedPostIds.has(act.id) ? '' : 'line-clamp-3'
-                            }`}>
-                              {act.description}
-                            </p>
-                            {act.description.length > 140 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpandPost(act.id);
-                                }}
-                                className="mt-1 text-xs font-mono text-[#C8102E] hover:underline cursor-pointer flex items-center gap-1 font-bold"
-                              >
-                                <span>{expandedPostIds.has(act.id) ? 'Show less' : 'Click to expand'}</span>
-                              </button>
-                            )}
-                          </div>
+                  /* Standard Build Log / Mod Layout: Text on top, Full-Width Photo below */
+                  <div className="flex flex-col">
+                    {act.description && (
+                      <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 space-y-1.5">
+                        <p className={`text-sm sm:text-base text-[#e0e0e0] leading-relaxed whitespace-pre-line ${
+                          expandedPostIds.has(act.id) ? '' : 'line-clamp-3'
+                        }`}>
+                          {act.description}
+                        </p>
+                        {act.description.length > 140 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleExpandPost(act.id);
+                            }}
+                            className="text-xs font-mono text-[#C8102E] hover:underline cursor-pointer flex items-center gap-1 font-bold pt-0.5"
+                          >
+                            <span>{expandedPostIds.has(act.id) ? 'Show less' : 'Click to expand'}</span>
+                          </button>
                         )}
                       </div>
+                    )}
 
-                      {/* Image - Clickable for Full Res (Uncropped) */}
-                      {act.photoUrl && (
-                        <div 
-                          className="md:col-span-5 relative max-h-[320px] overflow-hidden bg-[#141416] border border-[#383838] cursor-pointer group/photo flex items-center justify-center"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveLightboxImage(act.photoUrl!);
-                          }}
-                          title="Click to view full resolution"
-                        >
-                          <img
-                            src={act.photoUrl}
-                            alt={act.title}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-auto max-h-[320px] object-contain group-hover/photo:scale-105 transition-transform duration-500"
-                          />
+                    {/* Full Width Media Display */}
+                    {act.photoUrl && (
+                      <div 
+                        className="w-full relative max-h-[560px] overflow-hidden bg-black/60 border-t border-[#2d2d2d] cursor-pointer group/photo flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveLightboxImage(act.photoUrl!);
+                        }}
+                        title="Click to view full resolution"
+                      >
+                        <img
+                          src={act.photoUrl}
+                          alt={act.vehicleName || act.title}
+                          referrerPolicy="no-referrer"
+                          className="w-full max-h-[560px] object-cover sm:object-contain group-hover/photo:scale-[1.01] transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover/photo:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover/photo:opacity-100 pointer-events-none">
+                          <Maximize2 className="w-5 h-5 text-white drop-shadow-md" />
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
